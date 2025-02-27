@@ -4,6 +4,12 @@ use App\Http\Controllers\Api\TerritorioController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\EnsureApiTokenIsValid;
 use App\Http\Controllers\Api\UbicacionController;
+use App\Http\Controllers\Api\PlanIntervencionController;
+use App\Http\Controllers\Api\EvaluacionController;
+use App\Http\Controllers\Api\PreguntaController;
+use App\Http\Controllers\Api\InstitucionEjecutoraController;
+use App\Http\Controllers\Api\NNAController;
+use App\Http\Controllers\Api\RespuestaController;
 
 Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function () {
     // Rutas para obtener regiones, provincias y comunas de manera dinámica
@@ -17,4 +23,40 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/territorios/{id}', [TerritorioController::class, 'show']);
     Route::put('/territorios/{id}', [TerritorioController::class, 'update']);
     Route::delete('/territorios/{id}', [TerritorioController::class, 'destroy']);
+
+    // 📌 Rutas para Planes de Intervención
+    Route::get('/planes', [PlanIntervencionController::class, 'index']);  // Obtener todos los planes
+    Route::post('/planes', [PlanIntervencionController::class, 'store']); // Crear un nuevo plan
+    Route::get('/planes/{id}', [PlanIntervencionController::class, 'show']); // Obtener un plan específico
+    Route::put('/planes/{id}', [PlanIntervencionController::class, 'update']); // Actualizar un plan
+    Route::delete('/planes/{id}', [PlanIntervencionController::class, 'destroy']); // Eliminar un plan
+
+    // 📌 Rutas para Evaluaciones
+    Route::get('/evaluaciones', [EvaluacionController::class, 'index']);  
+    Route::post('/evaluaciones', [EvaluacionController::class, 'store']);
+    Route::get('/evaluaciones/{id}', [EvaluacionController::class, 'show']);
+    Route::put('/evaluaciones/{id}', [EvaluacionController::class, 'update']);
+    Route::delete('/evaluaciones/{id}', [EvaluacionController::class, 'destroy']);
+
+    // 📌 Rutas para Preguntas
+    Route::get('/preguntas', [PreguntaController::class, 'index']);  
+    Route::post('/preguntas', [PreguntaController::class, 'store']);
+    Route::get('/preguntas/{id}', [PreguntaController::class, 'show']);
+    Route::put('/preguntas/{id}', [PreguntaController::class, 'update']);
+    Route::delete('/preguntas/{id}', [PreguntaController::class, 'destroy']);
+
+    // 📌 Rutas para Respuestas
+    Route::get('/respuestas', [RespuestaController::class, 'index']);  
+    Route::post('/respuestas', [RespuestaController::class, 'store']);
+    Route::get('/respuestas/{id}', [RespuestaController::class, 'show']);
+    Route::put('/respuestas/{id}', [RespuestaController::class, 'update']);
+    Route::delete('/respuestas/{id}', [RespuestaController::class, 'destroy']);
+
+    // 📌 Rutas para Instituciones Ejecutoras
+    Route::get('/instituciones', [InstitucionEjecutoraController::class, 'index']);  
+    Route::post('/instituciones', [InstitucionEjecutoraController::class, 'store']);
+    Route::get('/instituciones/{id}', [InstitucionEjecutoraController::class, 'show']);
+    Route::put('/instituciones/{id}', [InstitucionEjecutoraController::class, 'update']);
+    Route::delete('/instituciones/{id}', [InstitucionEjecutoraController::class, 'destroy']);
+    
 });

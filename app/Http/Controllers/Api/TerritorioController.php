@@ -50,7 +50,7 @@ class TerritorioController extends Controller
         $territorio = Territorio::find($id);
     
         if (!$territorio) {
-            Log::error('❌ [show] Territorio no encontrado', ['territorio_id' => $id]);
+          //  Log::error('❌ [show] Territorio no encontrado', ['territorio_id' => $id]);
             return response()->json(['error' => 'Territorio no encontrado'], 404);
         }
     
@@ -108,12 +108,12 @@ class TerritorioController extends Controller
      */
     public function update(Request $request, $id)
     {
-        Log::info('📌 [update] Actualizando territorio', ['territorio_id' => $id, 'data' => $request->all()]);
+       // Log::info('📌 [update] Actualizando territorio', ['territorio_id' => $id, 'data' => $request->all()]);
     
         $territorio = Territorio::find($id);
     
         if (!$territorio) {
-            Log::error('❌ [update] Territorio no encontrado', ['territorio_id' => $id]);
+         //   Log::error('❌ [update] Territorio no encontrado', ['territorio_id' => $id]);
             return response()->json(['error' => 'Territorio no encontrado'], 404);
         }
     
@@ -148,7 +148,7 @@ class TerritorioController extends Controller
         $territorio->provincias = Provincia::whereIn('id', $territorio->provincia_id)->get(['id', 'nombre']);
         $territorio->regiones = Region::whereIn('id', $territorio->region_id)->get(['id', 'nombre']);
     
-        Log::info('✅ [update] Territorio actualizado correctamente', ['territorio' => $territorio]);
+       // Log::info('✅ [update] Territorio actualizado correctamente', ['territorio' => $territorio]);
     
         return response()->json($territorio);
     }
