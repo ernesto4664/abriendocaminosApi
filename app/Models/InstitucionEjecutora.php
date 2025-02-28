@@ -19,5 +19,10 @@ class InstitucionEjecutora extends Model {
     public function nna() {
         return $this->hasMany(NNA::class, 'institucion_id');
     }
+
+    public function planDeIntervencion() {
+        return $this->belongsTo(PlanIntervencion::class, 'planesdeintervencion_id');
+    }
+    
 }
 

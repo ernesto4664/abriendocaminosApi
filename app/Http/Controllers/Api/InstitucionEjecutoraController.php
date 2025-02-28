@@ -7,9 +7,12 @@ use App\Models\InstitucionEjecutora;
 use Illuminate\Http\Request;
 
 class InstitucionEjecutoraController extends Controller {
+
     public function index() {
-        return response()->json(InstitucionEjecutora::all(), 200);
+        $instituciones = InstitucionEjecutora::with('planDeIntervencion')->get();
+        return response()->json($instituciones, 200);
     }
+    
 
     public function store(Request $request) {
         $request->validate([
@@ -29,10 +32,11 @@ class InstitucionEjecutoraController extends Controller {
         return response()->json($institucion, 201);
     }
 
-    public function show($id) {
-        $institucion = InstitucionEjecutora::findOrFail($id);
-        return response()->json($institucion, 200);
-    }
+        public function show($id) {
+            $institucion = InstitucionEjecutora::with('planDeIntervencion')->findOrFail($id);
+            return response()->json($institucion, 200);
+        }
+
 
     public function update(Request $request, $id) {
         $institucion = InstitucionEjecutora::findOrFail($id);
