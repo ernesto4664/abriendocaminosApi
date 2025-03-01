@@ -11,10 +11,12 @@ use Illuminate\Support\Facades\Log;
 class EvaluacionController extends Controller {
     
     public function index() {
+
         return response()->json(Evaluacion::with('preguntas')->get(), 200);
     }
 
     public function store(Request $request) {
+
         Log::info('📌 [STORE] Recibida solicitud para crear una Evaluación', ['data' => $request->all()]);
 
         $request->validate([
@@ -41,10 +43,12 @@ class EvaluacionController extends Controller {
     }
 
     public function show($id) {
+
         return response()->json(Evaluacion::with('preguntas')->findOrFail($id), 200);
     }
 
     public function update(Request $request, $id) {
+
         Log::info('📌 [UPDATE] Actualizando Evaluación', ['evaluacion_id' => $id, 'data' => $request->all()]);
 
         $evaluacion = Evaluacion::findOrFail($id);
@@ -66,6 +70,7 @@ class EvaluacionController extends Controller {
     }
 
     public function destroy($id) {
+        
         Evaluacion::destroy($id);
         return response()->json(['message' => 'Evaluación eliminada correctamente'], 200);
     }

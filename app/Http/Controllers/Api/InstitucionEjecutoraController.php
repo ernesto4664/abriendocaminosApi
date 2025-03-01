@@ -9,12 +9,14 @@ use Illuminate\Http\Request;
 class InstitucionEjecutoraController extends Controller {
 
     public function index() {
+
         $instituciones = InstitucionEjecutora::with('planDeIntervencion')->get();
         return response()->json($instituciones, 200);
     }
     
 
     public function store(Request $request) {
+
         $request->validate([
             'nombre_fantasia' => 'required|string|max:255',
             'nombre_legal' => 'required|string|max:255',
@@ -33,12 +35,14 @@ class InstitucionEjecutoraController extends Controller {
     }
 
         public function show($id) {
+
             $institucion = InstitucionEjecutora::with('planDeIntervencion')->findOrFail($id);
             return response()->json($institucion, 200);
         }
 
 
     public function update(Request $request, $id) {
+
         $institucion = InstitucionEjecutora::findOrFail($id);
         $institucion->update($request->all());
 
@@ -46,6 +50,7 @@ class InstitucionEjecutoraController extends Controller {
     }
 
     public function destroy($id) {
+        
         InstitucionEjecutora::destroy($id);
         return response()->json(['message' => 'Institución ejecutora eliminada correctamente'], 200);
     }

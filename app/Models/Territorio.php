@@ -12,7 +12,7 @@ class Territorio extends Model
     protected $table = 'territorios';
     protected $fillable = [
         'nombre_territorio', 'region_id', 'provincia_id', 'cod_territorio',
-        'comuna_id', 'plazas', 'linea', 'cuota_1', 'cuota_2', 'total'
+        'comuna_id', 'plazas', 'linea_id', 'cuota_1', 'cuota_2', 'total'
     ];
 
     // Casts para convertir los JSON a arrays automáticamente
@@ -35,5 +35,10 @@ class Territorio extends Model
     public function regiones()
     {
         return $this->belongsToMany(Region::class, 'region_id', 'id');
+    }
+
+    public function linea()
+    {
+        return $this->belongsTo(LineasDeIntervencion::class, 'linea_id');
     }
 }

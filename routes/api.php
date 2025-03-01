@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PreguntaController;
 use App\Http\Controllers\Api\InstitucionEjecutoraController;
 use App\Http\Controllers\Api\NNAController;
 use App\Http\Controllers\Api\RespuestaController;
+use App\Http\Controllers\Api\LineasDeIntervencionController;
 
 Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function () {
     // Rutas para obtener regiones, provincias y comunas de manera dinámica
@@ -17,6 +18,13 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/provincias', [UbicacionController::class, 'getProvincias']); // Ahora usa query params
     Route::get('/comunas', [UbicacionController::class, 'getComunas']); // Ahora usa query params
     
+    // Rutas para gestionar lineas
+    Route::get('/lineas', [LineasDeIntervencionController::class, 'index']);
+    Route::post('/lineas', [LineasDeIntervencionController::class, 'store']);
+    Route::put('/lineas/{id}', [LineasDeIntervencionController::class, 'update']);
+    Route::get('/lineas/{id}', [LineasDeIntervencionController::class, 'show']);
+    Route::delete('/lineas/{id}', [LineasDeIntervencionController::class, 'destroy']);
+
     // Rutas para gestionar territorios
     Route::get('/territorios', [TerritorioController::class, 'index']);
     Route::post('/territorios', [TerritorioController::class, 'store']);
@@ -30,6 +38,8 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/planes/{id}', [PlanIntervencionController::class, 'show']); // Obtener un plan específico
     Route::put('/planes/{id}', [PlanIntervencionController::class, 'update']); // Actualizar un plan
     Route::delete('/planes/{id}', [PlanIntervencionController::class, 'destroy']); // Eliminar un plan
+    Route::get('/planes/territorio/{id}', [PlanIntervencionController::class, 'getPlanPorTerritorio']);
+    Route::get('/planes/por-linea/{linea_id}', [PlanIntervencionController::class, 'getPlanesPorLinea']);
 
     // 📌 Rutas para Evaluaciones
     Route::get('/evaluaciones', [EvaluacionController::class, 'index']);  
@@ -58,5 +68,5 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/instituciones/{id}', [InstitucionEjecutoraController::class, 'show']);
     Route::put('/instituciones/{id}', [InstitucionEjecutoraController::class, 'update']);
     Route::delete('/instituciones/{id}', [InstitucionEjecutoraController::class, 'destroy']);
-    
+
 });

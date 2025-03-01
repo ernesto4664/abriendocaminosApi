@@ -16,7 +16,7 @@ class RespuestaController extends Controller {
             'nna_id' => 'nullable|exists:nna,id',
             'profesional_id' => 'required|exists:users,id',
             'pregunta_id' => 'required|exists:preguntas,id',
-            'respuesta' => 'required|in:cumple,no_cumple,si,no',
+            'respuesta' => 'required|in:cumple,no_cumple,Si,No,De acuerdo, No de acuerdo',
             'observaciones' => 'nullable|string'
         ]);
 

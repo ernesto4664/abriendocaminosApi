@@ -10,10 +10,14 @@ class PlanIntervencion extends Model {
 
     protected $table = 'planes_intervencion';
 
-    protected $fillable = ['nombre', 'descripcion', 'linea'];
+    protected $fillable = ['nombre', 'descripcion', 'linea_id'];
 
     public function evaluaciones() {
         return $this->hasMany(Evaluacion::class, 'plan_id');
+    }
+
+    public function linea() {
+        return $this->belongsTo(LineasDeIntervencion::class, 'linea_id');
     }
 }
 
