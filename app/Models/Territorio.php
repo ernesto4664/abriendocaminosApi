@@ -10,6 +10,7 @@ class Territorio extends Model
     use HasFactory;
 
     protected $table = 'territorios';
+
     protected $fillable = [
         'nombre_territorio', 'region_id', 'provincia_id', 'cod_territorio',
         'comuna_id', 'plazas', 'linea_id', 'cuota_1', 'cuota_2', 'total'
@@ -22,21 +23,28 @@ class Territorio extends Model
         'comuna_id' => 'array'
     ];
 
-    public function comunas()
+    // Relación con las provincias
+    public function getProvinciasAttribute()
     {
-        return $this->belongsToMany(Comuna::class, 'comuna_id', 'id');
+        $provinciaIds = is_array($this->provincia_id) ? $this->provincia_id : json_decode($this->provincia_id, true) ?? [];
+        return Provincia::whereIn('id', $provinciaIds)->get(['id', 'nombre']);
     }
 
-    public function provincias()
+    // Relación con las comunas
+    public function getComunasAttribute()
     {
-        return $this->belongsToMany(Provincia::class, 'provincia_id', 'id');
+        $comunaIds = is_array($this->comuna_id) ? $this->comuna_id : json_decode($this->comuna_id, true) ?? [];
+        return Comuna::whereIn('id', $comunaIds)->get(['id', 'nombre']);
     }
 
-    public function regiones()
+    // Relación con las regiones
+    public function getRegionesAttribute()
     {
-        return $this->belongsToMany(Region::class, 'region_id', 'id');
+        $regionIds = is_array($this->region_id) ? $this->region_id : json_decode($this->region_id, true) ?? [];
+        return Region::whereIn('id', $regionIds)->get(['id', 'nombre']);
     }
 
+    // ✅ Relación con la línea de intervención
     public function linea()
     {
         return $this->belongsTo(LineasDeIntervencion::class, 'linea_id');

@@ -19,52 +19,36 @@ class TerritorioController extends Controller
      */
     public function index()
     {
-        $territorios = Territorio::all();
+        $territorios = Territorio::with('linea')->get();
     
         foreach ($territorios as $territorio) {
-            // Convertimos JSON a arrays y aseguramos que sean números enteros
-            $regionIds = is_array($territorio->region_id) ? array_map('intval', $territorio->region_id) : json_decode($territorio->region_id, true) ?? [];
-            $provinciaIds = is_array($territorio->provincia_id) ? array_map('intval', $territorio->provincia_id) : json_decode($territorio->provincia_id, true) ?? [];
-            $comunaIds = is_array($territorio->comuna_id) ? array_map('intval', $territorio->comuna_id) : json_decode($territorio->comuna_id, true) ?? [];
-
-            // Consultamos la base de datos y asignamos los resultados
-            $territorio->regiones = Region::whereIn('id', $regionIds)->get(['id', 'nombre'])->toArray();
-            $territorio->provincias = Provincia::whereIn('id', $provinciaIds)->get(['id', 'nombre'])->toArray();
-            $territorio->comunas = Comuna::whereIn('id', $comunaIds)->get(['id', 'nombre'])->toArray();
-
-            // ✅ Agregar la línea de intervención asociada
-            $territorio->linea = $territorio->linea_id 
-                ? LineasDeIntervencion::where('id', $territorio->linea_id)->value('nombre') 
-                : null;
+            $territorio->regiones = $territorio->regiones;
+            $territorio->provincias = $territorio->provincias;
+            $territorio->comunas = $territorio->comunas;
+            $territorio->linea = $territorio->linea ? $territorio->linea->nombre : 'Sin asignar'; // ✅ Devuelve solo el nombre
         }
     
         return response()->json($territorios);
     }
-    
-    /**
-     * Obtener un territorio por su ID.
-     */
+      
     public function show($id)
     {
-        $territorio = Territorio::find($id);
+        $territorio = Territorio::with('linea')->find($id);
     
         if (!$territorio) {
             return response()->json(['error' => 'Territorio no encontrado'], 404);
         }
-
-        // Obtener nombres de las comunas, provincias y regiones
-        $territorio->comunas = Comuna::whereIn('id', $territorio->comuna_id)->get(['id', 'nombre']);
-        $territorio->provincias = Provincia::whereIn('id', $territorio->provincia_id)->get(['id', 'nombre']);
-        $territorio->regiones = Region::whereIn('id', $territorio->region_id)->get(['id', 'nombre']);
-
-        // ✅ Agregar la línea de intervención asociada
-        $territorio->linea = $territorio->linea_id 
-            ? LineasDeIntervencion::where('id', $territorio->linea_id)->value('nombre') 
-            : null;
-
+    
+        $territorio->regiones = $territorio->regiones;
+        $territorio->provincias = $territorio->provincias;
+        $territorio->comunas = $territorio->comunas;
+        $territorio->linea = $territorio->linea ? $territorio->linea->nombre : 'Sin asignar';
+    
         return response()->json($territorio);
     }
-
+    
+    
+    
     /**
      * Crear un nuevo territorio.
      */

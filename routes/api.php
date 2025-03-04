@@ -12,6 +12,9 @@ use App\Http\Controllers\Api\NNAController;
 use App\Http\Controllers\Api\RespuestaController;
 use App\Http\Controllers\Api\LineasDeIntervencionController;
 
+use App\Http\Controllers\Api\UsuariosInstitucionController;
+use App\Http\Controllers\Api\AuthUsuariosInstitucionController;
+
 Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function () {
     // Rutas para obtener regiones, provincias y comunas de manera dinámica
     Route::get('/regiones', [UbicacionController::class, 'getRegiones']);
@@ -68,5 +71,12 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/instituciones/{id}', [InstitucionEjecutoraController::class, 'show']);
     Route::put('/instituciones/{id}', [InstitucionEjecutoraController::class, 'update']);
     Route::delete('/instituciones/{id}', [InstitucionEjecutoraController::class, 'destroy']);
+
+    Route::apiResource('usuarios-institucion', UsuariosInstitucionController::class);
+
+    Route::prefix('auth-usuarios-institucion')->group(function () {
+        Route::post('/register', [AuthUsuariosInstitucionController::class, 'register']); // Registrar usuario
+        Route::post('/login', [AuthUsuariosInstitucionController::class, 'login']); // Login
+    });
 
 });

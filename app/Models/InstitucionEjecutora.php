@@ -10,7 +10,7 @@ class InstitucionEjecutora extends Model {
 
     protected $table = 'instituciones_ejecutoras';
 
-    protected $fillable = ['nombre_fantasia', 'nombre_legal', 'rut', 'telefono', 'email', 'territorio_id', 'plazas'];
+    protected $fillable = ['nombre_fantasia', 'nombre_legal', 'rut', 'telefono', 'email', 'planesdeintervencion_id', 'territorio_id', 'plazas'];
 
     public function territorio() {
         return $this->belongsTo(Territorio::class, 'territorio_id');
