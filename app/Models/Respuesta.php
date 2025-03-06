@@ -10,7 +10,7 @@ class Respuesta extends Model {
 
     protected $table = 'respuestas';
 
-    protected $fillable = ['nna_id', 'profesional_id', 'pregunta_id', 'respuesta', 'observaciones'];
+    protected $fillable = ['nna_id', 'profesional_id', 'pregunta_id', 'respuesta', 'observaciones','tipo'];
 
     public function nna() {
         return $this->belongsTo(NNA::class, 'nna_id');

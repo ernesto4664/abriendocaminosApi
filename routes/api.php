@@ -43,6 +43,7 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::delete('/planes/{id}', [PlanIntervencionController::class, 'destroy']); // Eliminar un plan
     Route::get('/planes/territorio/{id}', [PlanIntervencionController::class, 'getPlanPorTerritorio']);
     Route::get('/planes/por-linea/{linea_id}', [PlanIntervencionController::class, 'getPlanesPorLinea']);
+    Route::get('/planes/{plan_id}/evaluaciones', [PlanIntervencionController::class, 'getEvaluacionesConPreguntas']);
 
     // 📌 Rutas para Evaluaciones
     Route::get('/evaluaciones', [EvaluacionController::class, 'index']);  

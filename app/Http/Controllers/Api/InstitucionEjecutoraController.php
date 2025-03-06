@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\InstitucionEjecutora;
 use App\Models\LineasDeIntervencion;
+use App\Models\Evaluacion;
+use App\Models\Pregunta;
 use App\Models\Region;
 use App\Models\Provincia;
 use App\Models\Comuna;
@@ -15,13 +17,16 @@ class InstitucionEjecutoraController extends Controller {
 
     public function index(Request $request)
     {
-        $query = InstitucionEjecutora::with(['planDeIntervencion', 'territorio']);
+        $query = InstitucionEjecutora::with([
+            'planDeIntervencion', 
+            'territorio',
+            'planDeIntervencion.evaluaciones.preguntas' // 🔹 Cargar Evaluaciones con sus Preguntas
+        ]);
     
-        // 🔹 Si se recibe region_id en la URL, filtramos
+        // 🔹 Si se recibe region_id en la URL, filtramos por territorio con esa región
         if ($request->has('region_id')) {
             $regionId = $request->region_id;
     
-            // 🔹 Filtramos por instituciones cuyo territorio tenga la región especificada
             $query->whereHas('territorio', function ($q) use ($regionId) {
                 $q->whereJsonContains('region_id', (int) $regionId);
             });
@@ -33,12 +38,21 @@ class InstitucionEjecutoraController extends Controller {
                 $institucion->territorio->provincias = $institucion->territorio->provincias;
                 $institucion->territorio->comunas = $institucion->territorio->comunas;
             }
+    
+            // 🔹 Agregar evaluaciones con sus preguntas
+            if ($institucion->planDeIntervencion) {
+                $institucion->planDeIntervencion->evaluaciones = $institucion->planDeIntervencion->evaluaciones->map(function ($evaluacion) {
+                    $evaluacion->preguntas = $evaluacion->preguntas;
+                    return $evaluacion;
+                });
+            }
+    
             return $institucion;
         });
     
         return response()->json($instituciones, 200);
     }
-    
+        
     public function store(Request $request) {
         Log::info('📌 Intentando crear institución con datos:', $request->all());
     

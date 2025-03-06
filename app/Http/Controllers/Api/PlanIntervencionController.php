@@ -225,6 +225,18 @@ class PlanIntervencionController extends Controller {
     return response()->json(['success' => true, 'planes' => $planes]);
 }
 
+public function getEvaluacionesConPreguntas($plan_id)
+{
+    $plan = PlanIntervencion::with(['evaluaciones.preguntas'])->find($plan_id);
+
+    if (!$plan) {
+        return response()->json(['error' => 'Plan de intervención no encontrado'], 404);
+    }
+
+    return response()->json($plan);
+}
+
+
     
      
 }
