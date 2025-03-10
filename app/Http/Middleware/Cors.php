@@ -11,7 +11,7 @@ class Cors
 {
     public function handle(Request $request, Closure $next)
     {
-        Log::info('Middleware CORS ejecutándose', ['origin' => $request->header('Origin')]);
+       // Log::info('Middleware CORS ejecutándose', ['origin' => $request->header('Origin')]);
 
         $allowedOrigins = ['http://localhost:4200'];
         $origin = $request->header('Origin');

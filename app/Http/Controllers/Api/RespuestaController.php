@@ -211,5 +211,20 @@ class RespuestaController extends Controller
     
         return response()->json(['message' => 'Respuesta eliminada con éxito'], 200);
     }
+
+    public function getEvaluacionCompleta($evaluacion_id)
+{
+    $evaluacion = Evaluacion::with([
+        'preguntas.respuestas' => function ($query) {
+            $query->with(['opciones', 'subpreguntas.opciones']);
+        }
+    ])->find($evaluacion_id);
+
+    if (!$evaluacion) {
+        return response()->json(['error' => 'Evaluación no encontrada'], 404);
+    }
+
+    return response()->json($evaluacion);
+}
     
 }
