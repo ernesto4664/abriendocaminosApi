@@ -74,4 +74,19 @@ class EvaluacionController extends Controller {
         Evaluacion::destroy($id);
         return response()->json(['message' => 'Evaluación eliminada correctamente'], 200);
     }
+
+    public function getEvaluacionesSinRespuestas($planId)
+    {
+        $evaluaciones = Evaluacion::where('plan_id', $planId)
+            ->with(['preguntas'])
+            ->get()
+            ->filter(function ($evaluacion) {
+                return !$evaluacion->preguntas->some(fn($p) => $p->respuestas()->exists());
+            })
+            ->values(); // ✅ Reiniciar índices del array
+    
+        return response()->json(['evaluaciones' => $evaluaciones]);
+    }
+    
+
 }

@@ -6,26 +6,15 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Cookie;
 
 class EnsureApiTokenIsValid
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next)
     {
-        $apiToken = $request->header('Api-Token');
+        // Intentar obtener el token del header o de la cookie
+        $apiToken = $request->header('Api-Token') ?? $request->cookie('auth_token');
     
-        // Log para verificar si el encabezado se está recibiendo y la variable de entorno
-       /* Log::info('Verificando Api-Token en la solicitud', [
-            'Api-Token Enviado' => $apiToken,
-            'Api-Token Esperado' => env('API_SERVER_HEADER_TOKENS'),
-        ]);*/
-    
-        // Validar el token usando la variable de entorno
         if (!$apiToken || $apiToken !== env('API_SERVER_HEADER_TOKENS')) {
             Log::warning('Acceso no autorizado... Token de API ausente o no válido.', [
                 'Api-Token Enviado' => $apiToken
@@ -33,6 +22,16 @@ class EnsureApiTokenIsValid
             return response()->json(['message' => 'Unauthorized. Invalid API token.'], 401);
         }
     
-        return $next($request);
+        // 🔹 Configurar la cookie correctamente
+        $secure = app()->environment('local') ? false : true;
+    
+        $response = $next($request);
+        return $response->cookie(
+            'auth_token', $apiToken, 60, '/', 'localhost', false, true
+        );
+        
     }
+    
+    
 }
+

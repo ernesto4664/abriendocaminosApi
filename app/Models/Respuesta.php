@@ -10,14 +10,35 @@ class Respuesta extends Model {
 
     protected $table = 'respuestas';
 
-    protected $fillable = ['nna_id', 'profesional_id', 'pregunta_id', 'respuesta', 'observaciones','tipo'];
-
-    public function nna() {
-        return $this->belongsTo(NNA::class, 'nna_id');
-    }
+    protected $fillable = [
+        'nna_id', 
+        'profesional_id', 
+        'pregunta_id', 
+        'respuesta', 
+        'observaciones', 
+        'tipo'
+    ];
 
     public function pregunta() {
-        return $this->belongsTo(Pregunta::class, 'pregunta_id');
+        return $this->belongsTo(Pregunta::class, 'pregunta_id')->withDefault();
+    }
+
+    public function opciones() {
+        return $this->hasMany(RespuestaOpcion::class, 'respuesta_id');
+    }
+
+    public function subpreguntas() {
+        return $this->hasMany(RespuestaSubpregunta::class, 'respuesta_id');
+    }
+
+    public function opcionesLikert() {
+        return $this->hasMany(OpcionLikert::class, 'respuesta_id');
+    }
+
+    public function barraSatisfaccionOpciones() {
+        return $this->hasMany(OpcionBarraSatisfaccion::class, 'respuesta_id');
     }
 }
+
+
 

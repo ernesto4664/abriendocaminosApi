@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\TerritorioController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\EnsureApiTokenIsValid;
+use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\UbicacionController;
 use App\Http\Controllers\Api\PlanIntervencionController;
 use App\Http\Controllers\Api\EvaluacionController;
@@ -51,6 +52,7 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/evaluaciones/{id}', [EvaluacionController::class, 'show']);
     Route::put('/evaluaciones/{id}', [EvaluacionController::class, 'update']);
     Route::delete('/evaluaciones/{id}', [EvaluacionController::class, 'destroy']);
+    Route::get('/planes/{planId}/evaluaciones-sin-respuestas', [EvaluacionController::class, 'getEvaluacionesSinRespuestas']);
 
     // 📌 Rutas para Preguntas
     Route::get('/preguntas', [PreguntaController::class, 'index']);  
@@ -81,3 +83,14 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     });
 
 });
+
+
+Route::get('/v1/get-static-token', [TokenController::class, 'getStaticToken']); // Genera el token
+
+// Ruta protegida que requiere el token válido
+Route::middleware([EnsureApiTokenIsValid::class])->get('/v1/protected-data', function() {
+    return response()->json(['message' => 'Token validado con éxito']); // Ruta protegida
+});
+
+
+

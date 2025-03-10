@@ -20,7 +20,7 @@ class PlanIntervencionController extends Controller {
     
         return response()->json($planes, 200);
     }
-    
+       
     public function store(Request $request) { 
 
         Log::info('📌 [STORE] Recibida solicitud para crear un Plan de Intervención', [
