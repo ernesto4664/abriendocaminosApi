@@ -13,13 +13,15 @@ class Cors
     {
        // Log::info('Middleware CORS ejecutándose', ['origin' => $request->header('Origin')]);
 
-        $allowedOrigins = ['http://localhost:4200'];
-        $origin = $request->header('Origin');
+       $allowedOrigins = ['http://localhost:4200'];
 
-        if (!in_array($origin, $allowedOrigins)) {
-            return response()->json(['message' => 'Origen no permitido'], 403);
-        }
-
+       $origin = $request->header('Origin');
+       
+       // Permitir si no hay `Origin` (Postman) o si es un origen permitido
+       if ($origin && !in_array($origin, $allowedOrigins)) {
+           return response()->json(['message' => 'Origen no permitido'], 403);
+       }
+       
         $headers = [
             'Access-Control-Allow-Origin' => $origin, // ✅ Permitir solo orígenes específicos
             'Access-Control-Allow-Credentials' => 'true', // ✅ Permitir envío de cookies

@@ -68,6 +68,8 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::put('/respuestas/{id}', [RespuestaController::class, 'update']);
     Route::delete('/respuestas/{id}', [RespuestaController::class, 'destroy']);
 
+    Route::get('/respuestas/por-evaluacion/{evaluacion_id}', [RespuestaController::class, 'getRespuestasPorEvaluacion']);
+
     Route::get('/evaluacion/{evaluacion_id}', [RespuestaController::class, 'getRespuestasPorEvaluacion']);
     Route::get('/evaluaciones/{evaluacion_id}/completa', [RespuestaController::class, 'getEvaluacionCompleta']);
 

@@ -12,9 +12,11 @@ class Pregunta extends Model {
 
     protected $fillable = ['evaluacion_id', 'pregunta'];
 
-    public function evaluacion() {
+    public function evaluacion()
+    {
         return $this->belongsTo(Evaluacion::class, 'evaluacion_id');
     }
+    
 
     public function respuestas() {
         return $this->hasMany(Respuesta::class, 'pregunta_id');

@@ -14,7 +14,7 @@ class OpcionLikert extends Model {
 
     public function subpregunta() {
         return $this->belongsTo(RespuestaSubpregunta::class, 'subpregunta_id');
-    }
+    }    
 }
 
 
