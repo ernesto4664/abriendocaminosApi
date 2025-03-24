@@ -17,8 +17,14 @@ class RespuestaSubpregunta extends Model {
     }
 
     // ✅ Agregar la relación correcta con `OpcionLikert`
-    public function opciones() {
+    public function opcionesLikert() {
         return $this->hasMany(OpcionLikert::class, 'subpregunta_id');
     }
+
+    public function opciones()
+    {
+        return $this->hasMany(RespuestaOpcion::class, 'respuesta_id');
+    }
+    
 }
 

@@ -67,10 +67,9 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/respuestas/{id}', [RespuestaController::class, 'show']);
     Route::put('/respuestas/{id}', [RespuestaController::class, 'update']);
     Route::delete('/respuestas/{id}', [RespuestaController::class, 'destroy']);
+    
+    Route::put('/respuestas-multiple', [RespuestaController::class, 'updateMultiple']);
 
-    Route::get('/respuestas/por-evaluacion/{evaluacion_id}', [RespuestaController::class, 'getRespuestasPorEvaluacion']);
-
-    Route::get('/evaluacion/{evaluacion_id}', [RespuestaController::class, 'getRespuestasPorEvaluacion']);
     Route::get('/evaluaciones/{evaluacion_id}/completa', [RespuestaController::class, 'getEvaluacionCompleta']);
 
     // 📌 Rutas para Instituciones Ejecutoras
