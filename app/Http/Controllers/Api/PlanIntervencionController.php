@@ -6,6 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\PlanIntervencion;
 use App\Models\Evaluacion;
 use App\Models\Pregunta;
+use App\Models\Respuesta;
+use App\Models\RespuestaOpcion;
+use App\Models\RespuestaSubpregunta;
+use App\Models\RespuestaTipo;
 use App\Models\LineasDeIntervencion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +22,52 @@ class PlanIntervencionController extends Controller {
 
         $planes = PlanIntervencion::with(['evaluaciones', 'linea'])->get();
     
+        return response()->json($planes, 200);
+    }
+
+    public function indexCompleto()
+    {
+        Log::info('[indexCompleto] Inicio del método');
+
+        // 1) Cargo los planes con todo el árbol
+        $planes = PlanIntervencion::with([
+            'evaluaciones' => function($qe) {
+                $qe->with([
+                    'preguntas' => function($qp) {
+                        $qp->with([
+                            'tiposDeRespuesta',
+                            'respuestas.opciones',
+                            'respuestas.subpreguntas.opcionesLikert',
+                            'respuestas.opcionesBarraSatisfaccion',
+                            'respuestas.opcionesLikert',
+                        ]);
+                    },
+                ]);
+            },
+        ])->get();
+
+        Log::info('[indexCompleto] Planes cargados', ['planes_count' => $planes->count()]);
+
+        foreach ($planes as $plan) {
+            Log::info("[indexCompleto] Plan ID={$plan->id}", [
+                'evaluaciones_count' => $plan->evaluaciones->count()
+            ]);
+
+            foreach ($plan->evaluaciones as $eval) {
+                Log::info("  [indexCompleto] Evaluación ID={$eval->id}", [
+                    'preguntas_count' => $eval->preguntas->count()
+                ]);
+
+                foreach ($eval->preguntas as $preg) {
+                    Log::info("    [indexCompleto] Pregunta ID={$preg->id}", [
+                        'tipos_count'      => $preg->tiposDeRespuesta->count(),
+                        'respuestas_count' => $preg->respuestas->count()
+                    ]);
+                }
+            }
+        }
+
+        Log::info('[indexCompleto] Terminó de registrar detalles, devolviendo JSON');
         return response()->json($planes, 200);
     }
        

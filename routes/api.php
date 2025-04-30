@@ -46,6 +46,8 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/planes/por-linea/{linea_id}', [PlanIntervencionController::class, 'getPlanesPorLinea']);
     Route::get('/planes/{plan_id}/evaluaciones', [PlanIntervencionController::class, 'getEvaluacionesConPreguntas']);
 
+    Route::get('planes-completo', [PlanIntervencionController::class, 'indexCompleto']);
+    
     // 📌 Rutas para Evaluaciones
     Route::get('/evaluaciones', [EvaluacionController::class, 'index']);  
     Route::post('/evaluaciones', [EvaluacionController::class, 'store']);

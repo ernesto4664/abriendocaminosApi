@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Respuesta;
+use App\Models\PlanIntervencion;
 use App\Models\Pregunta;
 use App\Models\RespuestaTipo;
 use App\Models\RespuestaOpcion;
