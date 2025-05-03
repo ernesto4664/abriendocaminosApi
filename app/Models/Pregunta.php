@@ -24,5 +24,10 @@ class Pregunta extends Model {
     public function respuestas() {
         return $this->hasMany(Respuesta::class, 'pregunta_id');
     }
+
+    public function subpreguntas()
+    {
+        return $this->hasMany(RespuestaSubpregunta::class, 'pregunta_id');
+    }
 }
 

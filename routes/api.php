@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\LineasDeIntervencionController;
 
 use App\Http\Controllers\Api\UsuariosInstitucionController;
 use App\Http\Controllers\Api\AuthUsuariosInstitucionController;
+use App\Http\Controllers\Api\PonderacionController;
 
 Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function () {
     // Rutas para obtener regiones, provincias y comunas de manera dinámica
@@ -88,6 +89,10 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
         Route::post('/login', [AuthUsuariosInstitucionController::class, 'login']); // Login
     });
 
+    // 📌 Rutas para Ponderaciones
+
+    Route::post('ponderaciones', [PonderacionController::class, 'store']);
+    Route::get('ponderaciones/completo', [PonderacionController::class, 'completo']);
 });
 
 

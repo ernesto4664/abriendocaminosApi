@@ -41,88 +41,129 @@ class RespuestaController extends Controller
         return response()->json($evaluaciones, 200);
     }
 
-    /** 📌 Guardar varias respuestas para una evaluación */
-    public function store(Request $request)
-    {
-        Log::info("📡 Recibiendo respuestas:", $request->all());
-    
-        // ✅ Validación
-        $request->validate([
-            'evaluacion_id' => 'required|exists:evaluaciones,id',
-            'respuestas' => 'required|array|min:1',
-            'respuestas.*.pregunta_id' => 'required|exists:preguntas,id',
-            'respuestas.*.tipo' => ['required', Rule::in([
-                'texto', 'barra_satisfaccion', '5emojis', 'si_no', 'si_no_noestoyseguro', 'likert', 'numero', 'opcion', 'opcion_personalizada'
-            ])],
-            'respuestas.*.observaciones' => 'nullable|string',
-            'respuestas.*.respuesta' => 'nullable|string',
-            'respuestas.*.opciones' => 'nullable|array',
-            'respuestas.*.subpreguntas' => 'nullable|array',
-        ]);
-    
-        DB::beginTransaction();
-        try {
-            $respuestas = [];
-    
-            foreach ($request->respuestas as $resp) {
-                // ✅ Determinar si la respuesta debe ser un input vacío (texto o número)
-                $respuestaValor = in_array($resp['tipo'], ['texto', 'numero']) ? '' : ($resp['respuesta'] ?? null);
-    
-                // ✅ Crear la respuesta SIN almacenar `tipo`
-                $nuevaRespuesta = Respuesta::create([
-                    'evaluacion_id' => $request->evaluacion_id,
-                    'pregunta_id' => $resp['pregunta_id'],
-                    'respuesta' => $respuestaValor,
-                    'observaciones' => $resp['observaciones'] ?? null
-                ]);
-    
-                // ✅ Guardar tipo en `respuesta_tipos`
-                RespuestaTipo::create([
-                    'pregunta_id' => $resp['pregunta_id'],
-                    'tipo' => $resp['tipo']
-                ]);
-    
-                // ✅ Guardar opciones en `respuestas_opciones` solo si el tipo lo requiere
-                if (!empty($resp['opciones']) && in_array($resp['tipo'], [
-                    'opcion_personalizada', 'si_no', 'si_no_noestoyseguro', '5emojis'
-                ])) {
-                    $this->guardarOpciones($nuevaRespuesta, $resp['opciones']);
-                }
-    
-                // ✅ Guardar opciones de barra de satisfacción en su tabla específica
-                if ($resp['tipo'] === 'barra_satisfaccion') {
-                    $this->guardarBarraSatisfaccion($nuevaRespuesta);
-                }
-    
-                // ✅ Guardar subpreguntas de tipo Likert si existen
-                if ($resp['tipo'] === 'likert' && !empty($resp['subpreguntas'])) {
-                    $this->guardarSubpreguntasLikert($nuevaRespuesta, $resp['subpreguntas']);
-                }
-    
-                $respuestas[] = $nuevaRespuesta;
-            }
-    
-            DB::commit();
-            return response()->json(['message' => 'Respuestas guardadas con éxito', 'respuestas' => $respuestas], 201);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("❌ Error al guardar respuestas: " . $e->getMessage());
-            return response()->json(['error' => 'Error al guardar respuestas', 'details' => $e->getMessage()], 500);
-        }
-    }
-    
-   
-    /** 📌 Guardar opciones personalizadas */
-    private function guardarOpcionesPersonalizadas(Respuesta $respuesta, array $opciones)
-    {
-        foreach ($opciones as $opcion) {
-            RespuestaOpcion::create([
-                'respuesta_id' => $respuesta->id,
-                'label' => $opcion['label'] ?? 'Opción sin título',
-                'valor' => $opcion['valor'] ?? null,
+        /** 📌 Guardar varias respuestas para una evaluación */
+        public function store(Request $request)
+        {
+            Log::info("📡 Recibiendo respuestas:", $request->all());
+        
+            // ✅ Validación
+            $request->validate([
+                'evaluacion_id' => 'required|exists:evaluaciones,id',
+                'respuestas' => 'required|array|min:1',
+                'respuestas.*.pregunta_id' => 'required|exists:preguntas,id',
+                'respuestas.*.tipo' => ['required', Rule::in([
+                    'texto', 'barra_satisfaccion', '5emojis', 'si_no', 'si_no_noestoyseguro', 'likert', 'numero', 'opcion', 'opcion_personalizada'
+                ])],
+                'respuestas.*.observaciones' => 'nullable|string',
+                'respuestas.*.respuesta' => 'nullable|string',
+                'respuestas.*.opciones' => 'nullable|array',
+                'respuestas.*.subpreguntas' => 'nullable|array',
             ]);
+        
+            DB::beginTransaction();
+            try {
+                $respuestas = [];
+        
+                foreach ($request->respuestas as $resp) {
+                    // ✅ Determinar si la respuesta debe ser un input vacío (texto o número)
+                    $respuestaValor = in_array($resp['tipo'], ['texto', 'numero']) ? '' : ($resp['respuesta'] ?? null);
+        
+                    // ✅ Crear la respuesta SIN almacenar `tipo`
+                    $nuevaRespuesta = Respuesta::create([
+                        'evaluacion_id' => $request->evaluacion_id,
+                        'pregunta_id' => $resp['pregunta_id'],
+                        'respuesta' => $respuestaValor,
+                        'observaciones' => $resp['observaciones'] ?? null
+                    ]);
+        
+                    // ✅ Guardar tipo en `respuesta_tipos`
+                    RespuestaTipo::create([
+                        'pregunta_id' => $resp['pregunta_id'],
+                        'tipo' => $resp['tipo']
+                    ]);
+        
+                    // ✅ Guardar opciones en `respuestas_opciones` solo si el tipo lo requiere
+                    if (!empty($resp['opciones']) && in_array($resp['tipo'], [
+                        'opcion_personalizada', 'si_no', 'si_no_noestoyseguro', '5emojis'
+                    ])) {
+                        $this->guardarOpciones($nuevaRespuesta, $resp['opciones']);
+                    }
+        
+                    // ✅ Guardar opciones de barra de satisfacción en su tabla específica
+                    if ($resp['tipo'] === 'barra_satisfaccion') {
+                        $this->guardarBarraSatisfaccion($nuevaRespuesta);
+                    }
+        
+                    // ✅ Guardar subpreguntas de tipo Likert si existen
+                    if ($resp['tipo'] === 'likert' && !empty($resp['subpreguntas'])) {
+                        $this->guardarSubpreguntasLikert($nuevaRespuesta, $resp['subpreguntas']);
+                    }
+        
+                    $respuestas[] = $nuevaRespuesta;
+                }
+        
+                DB::commit();
+                return response()->json(['message' => 'Respuestas guardadas con éxito', 'respuestas' => $respuestas], 201);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("❌ Error al guardar respuestas: " . $e->getMessage());
+                return response()->json(['error' => 'Error al guardar respuestas', 'details' => $e->getMessage()], 500);
+            }
         }
-    }
+       
+        /** 📌 Guardar opciones personalizadas */
+        private function guardarOpcionesPersonalizadas(Respuesta $respuesta, array $opciones)
+        {
+            foreach ($opciones as $opcion) {
+                RespuestaOpcion::create([
+                    'respuesta_id' => $respuesta->id,
+                    'label' => $opcion['label'] ?? 'Opción sin título',
+                    'valor' => $opcion['valor'] ?? null,
+                ]);
+            }
+        }
+
+        /** 📌 Guardar opciones */
+        private function guardarOpciones(Respuesta $respuesta, array $opciones)
+        {
+            foreach ($opciones as $opcion) {
+                RespuestaOpcion::create([
+                    'respuesta_id' => $respuesta->id,
+                    'label' => $opcion['label'] ?? 'Opción sin título',
+                    'valor' => $opcion['valor'] ?? null,
+                ]);
+            }
+        }
+    
+        /** 📌 Guardar barra de satisfacción */
+        private function guardarBarraSatisfaccion(Respuesta $respuesta)
+        {
+            for ($i = 0; $i <= 10; $i++) {
+                OpcionBarraSatisfaccion::create([
+                    'respuesta_id' => $respuesta->id,
+                    'valor' => $i
+                ]);
+            }
+        }
+    
+        /** 📌 Guardar subpreguntas de tipo Likert */
+        private function guardarSubpreguntasLikert(Respuesta $respuesta, array $subpreguntas)
+        {
+            foreach ($subpreguntas as $subpregunta) {
+                $nuevaSubpregunta = RespuestaSubpregunta::create([
+                    'respuesta_id' => $respuesta->id, 
+                    'texto' => $subpregunta['texto'],
+                ]);
+        
+                foreach ($subpregunta['opciones'] as $opcion) {
+                    OpcionLikert::create([
+                        'subpregunta_id' => $nuevaSubpregunta->id,
+                        'label' => $opcion['label'],
+                        'respuesta_id' => $respuesta->id,
+                    ]);
+                }
+            }
+        }
 
     /** 📌 Actualizar múltiples respuestas en una evaluación */
     public function updateMultiple(Request $request)
@@ -319,50 +360,6 @@ class RespuestaController extends Controller
                         'respuesta_id' => $respuesta->id,
                     ]);
                 }
-            }
-        }
-    }
-
-
-
-    /** 📌 Guardar opciones */
-    private function guardarOpciones(Respuesta $respuesta, array $opciones)
-    {
-        foreach ($opciones as $opcion) {
-            RespuestaOpcion::create([
-                'respuesta_id' => $respuesta->id,
-                'label' => $opcion['label'] ?? 'Opción sin título',
-                'valor' => $opcion['valor'] ?? null,
-            ]);
-        }
-    }
-
-    /** 📌 Guardar barra de satisfacción */
-    private function guardarBarraSatisfaccion(Respuesta $respuesta)
-    {
-        for ($i = 0; $i <= 10; $i++) {
-            OpcionBarraSatisfaccion::create([
-                'respuesta_id' => $respuesta->id,
-                'valor' => $i
-            ]);
-        }
-    }
-
-    /** 📌 Guardar subpreguntas de tipo Likert */
-    private function guardarSubpreguntasLikert(Respuesta $respuesta, array $subpreguntas)
-    {
-        foreach ($subpreguntas as $subpregunta) {
-            $nuevaSubpregunta = RespuestaSubpregunta::create([
-                'respuesta_id' => $respuesta->id, 
-                'texto' => $subpregunta['texto'],
-            ]);
-    
-            foreach ($subpregunta['opciones'] as $opcion) {
-                OpcionLikert::create([
-                    'subpregunta_id' => $nuevaSubpregunta->id,
-                    'label' => $opcion['label'],
-                    'respuesta_id' => $respuesta->id,
-                ]);
             }
         }
     }
