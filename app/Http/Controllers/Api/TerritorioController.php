@@ -13,90 +13,70 @@ class TerritorioController extends Controller
 {
     /**
      * Listar todos los territorios con sus relaciones.
+     * → Devuelve un array puro de territorios formateados
      */
     public function index()
     {
         try {
-            $territorios = Territorio::with('linea')->get()->map(function ($t) {
-                return [
-                    'id'           => $t->id,
-                    'nombre'       => $t->nombre_territorio,
-                    'linea'        => $t->linea?->nombre ?? 'Sin asignar',
-                    'regiones'     => $t->regiones,
-                    'provincias'   => $t->provincias,
-                    'comunas'      => $t->comunas,
-                    'plazas'       => $t->plazas,
-                    'cuotas'       => [
-                        $t->cuota_1,
-                        $t->cuota_2,
-                        'total' => $t->total,
-                    ],
-                ];
-            });
+            $territorios = Territorio::with('linea')->get()->map(fn($t) => [
+                'id'         => $t->id,
+                'nombre'     => $t->nombre_territorio,
+                'linea'      => $t->linea?->nombre ?? 'Sin asignar',
+                'regiones'   => $t->regiones,
+                'provincias' => $t->provincias,
+                'comunas'    => $t->comunas,
+                'plazas'     => $t->plazas,
+                'cuotas'     => [
+                    'cuota_1' => $t->cuota_1,
+                    'cuota_2' => $t->cuota_2,
+                    'total'   => $t->total,
+                ],
+            ]);
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $territorios,
-            ], Response::HTTP_OK);
+            return response()->json($territorios, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('[Territorio][index] ' . $e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al listar territorios',
-                'error'   => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al listar territorios'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar un territorio por ID.
+     * → Devuelve un objeto territorio formateado
      */
     public function show($id)
     {
         try {
             $t = Territorio::with('linea')->findOrFail($id);
-
             $data = [
-                'id'           => $t->id,
-                'nombre'       => $t->nombre_territorio,
-                'linea'        => $t->linea?->nombre ?? 'Sin asignar',
-                'regiones'     => $t->regiones,
-                'provincias'   => $t->provincias,
-                'comunas'      => $t->comunas,
-                'plazas'       => $t->plazas,
-                'cuotas'       => [
-                    $t->cuota_1,
-                    $t->cuota_2,
-                    'total' => $t->total,
+                'id'         => $t->id,
+                'nombre'     => $t->nombre_territorio,
+                'linea'      => $t->linea?->nombre ?? 'Sin asignar',
+                'regiones'   => $t->regiones,
+                'provincias' => $t->provincias,
+                'comunas'    => $t->comunas,
+                'plazas'     => $t->plazas,
+                'cuotas'     => [
+                    'cuota_1' => $t->cuota_1,
+                    'cuota_2' => $t->cuota_2,
+                    'total'   => $t->total,
                 ],
             ];
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $data,
-            ], Response::HTTP_OK);
+            return response()->json($data, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Territorio no encontrado',
-            ], Response::HTTP_NOT_FOUND);
-
+            return response()->json(['message' => 'Territorio no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
             Log::error('[Territorio][show] ' . $e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener territorio',
-                'error'   => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al obtener territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear un nuevo territorio.
+     * → Devuelve el objeto creado
      */
     public function store(Request $request)
     {
@@ -115,31 +95,24 @@ class TerritorioController extends Controller
         try {
             $t = Territorio::create(array_merge(
                 $request->only([
-                    'nombre_territorio', 'cod_territorio',
-                    'comuna_id', 'provincia_id', 'region_id',
-                    'plazas', 'linea_id', 'cuota_1', 'cuota_2'
+                    'nombre_territorio','cod_territorio',
+                    'comuna_id','provincia_id','region_id',
+                    'plazas','linea_id','cuota_1','cuota_2'
                 ]),
                 ['total' => ($request->cuota_1 ?? 0) + ($request->cuota_2 ?? 0)]
             ));
 
-            return response()->json([
-                'code' => Response::HTTP_CREATED,
-                'data' => $t,
-            ], Response::HTTP_CREATED);
+            return response()->json($t, Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             Log::error('[Territorio][store] ' . $e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al crear territorio',
-                'error'   => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al crear territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar un territorio.
+     * → Devuelve el objeto actualizado
      */
     public function update(Request $request, $id)
     {
@@ -163,62 +136,37 @@ class TerritorioController extends Controller
                 'comuna_id','provincia_id','region_id',
                 'plazas','linea_id','cuota_1','cuota_2'
             ]);
-            $data['total'] = ($data['cuota_1'] ?? $t->cuota_1 ?? 0) +
-                              ($data['cuota_2'] ?? $t->cuota_2 ?? 0);
+            $data['total'] = ($data['cuota_1'] ?? $t->cuota_1 ?? 0)
+                            + ($data['cuota_2'] ?? $t->cuota_2 ?? 0);
             $t->update($data);
-
             $t->linea = LineasDeIntervencion::find($t->linea_id)?->nombre;
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $t,
-            ], Response::HTTP_OK);
+            return response()->json($t, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Territorio no encontrado',
-            ], Response::HTTP_NOT_FOUND);
-
+            return response()->json(['message' => 'Territorio no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
             Log::error('[Territorio][update] ' . $e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al actualizar territorio',
-                'error'   => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al actualizar territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar un territorio.
+     * → Devuelve mensaje de confirmación
      */
     public function destroy($id)
     {
         try {
             $t = Territorio::findOrFail($id);
             $t->delete();
-
-            return response()->json([
-                'code'    => Response::HTTP_OK,
-                'message' => 'Territorio eliminado correctamente',
-            ], Response::HTTP_OK);
+            return response()->json(['message' => 'Territorio eliminado correctamente'], Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Territorio no encontrado',
-            ], Response::HTTP_NOT_FOUND);
-
+            return response()->json(['message' => 'Territorio no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
             Log::error('[Territorio][destroy] ' . $e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al eliminar territorio',
-                'error'   => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al eliminar territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

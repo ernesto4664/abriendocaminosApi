@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\UsuariosInstitucion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use App\Models\UsuariosInstitucion;
 
 class AuthUsuariosInstitucionController extends Controller
 {
@@ -16,7 +17,8 @@ class AuthUsuariosInstitucionController extends Controller
      */
     public function register(Request $request)
     {
-        $request->validate([
+        // validación de inputs
+        $data = $request->validate([
             'nombres'           => 'required|string|max:255',
             'apellidos'         => 'required|string|max:255',
             'rut'               => 'required|string|max:12|unique:usuarios_institucion,rut',
@@ -28,41 +30,23 @@ class AuthUsuariosInstitucionController extends Controller
             'provincia_id'      => 'required|exists:provincias,id',
             'comuna_id'         => 'required|exists:comunas,id',
             'institucion_id'    => 'required|exists:instituciones_ejecutoras,id',
-            'password'          => 'required|string|min:6|confirmed'
+            'password'          => 'required|string|min:6|confirmed',
         ]);
 
         try {
-            $data = $request->only([
-                'nombres',
-                'apellidos',
-                'rut',
-                'sexo',
-                'fecha_nacimiento',
-                'profesion',
-                'email',
-                'region_id',
-                'provincia_id',
-                'comuna_id',
-                'institucion_id',
-            ]);
-            $data['password'] = Hash::make($request->password);
+            $data['password'] = Hash::make($data['password']);
             $data['rol']      = 'PROFESIONAL';
 
             $usuario = UsuariosInstitucion::create($data);
 
-            return response()->json([
-                'code'    => 201,
-                'message' => 'Usuario registrado correctamente',
-                'data'    => $usuario,
-            ], 201);
+            return response()->json($usuario, Response::HTTP_CREATED);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Error al registrar usuario de institución: ' . $e->getMessage());
 
             return response()->json([
-                'code'    => 500,
-                'message' => 'Error interno al registrar el usuario',
-            ], 500);
+                'message' => 'Error interno al registrar el usuario'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -71,45 +55,42 @@ class AuthUsuariosInstitucionController extends Controller
      */
     public function login(Request $request)
     {
+        // validación de inputs
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string|min:6',
         ]);
 
         try {
-            $usuario = UsuariosInstitucion::where('email', $request->email)->first();
+            $usuario = UsuariosInstitucion::where('email', $request->email)->firstOrFail();
 
-            if (!$usuario || !Hash::check($request->password, $usuario->password)) {
-                throw ValidationException::withMessages([
-                    'email' => ['Las credenciales son incorrectas']
-                ]);
+            if (! Hash::check($request->password, $usuario->password)) {
+                throw new ValidationException(validator: null, response: null, customResponse: null);
             }
 
             $token = $usuario->createToken('authToken')->plainTextToken;
 
             return response()->json([
-                'code'    => 200,
-                'message' => 'Inicio de sesión exitoso',
-                'data'    => [
-                    'usuario' => $usuario,
-                    'token'   => $token
-                ],
-            ], 200);
+                'usuario' => $usuario,
+                'token'   => $token,
+            ], Response::HTTP_OK);
 
-        } catch (ValidationException $ve) {
+        } catch (ValidationException) {
             return response()->json([
-                'code'    => 422,
-                'message' => 'Credenciales inválidas',
-                'errors'  => $ve->errors(),
-            ], 422);
+                'message' => 'Las credenciales son incorrectas'
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Usuario no encontrado'
+            ], Response::HTTP_NOT_FOUND);
+
+        } catch (\Throwable $e) {
             Log::error('Error en login de usuario de institución: ' . $e->getMessage());
 
             return response()->json([
-                'code'    => 500,
-                'message' => 'Error interno al iniciar sesión',
-            ], 500);
+                'message' => 'Error interno al iniciar sesión'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

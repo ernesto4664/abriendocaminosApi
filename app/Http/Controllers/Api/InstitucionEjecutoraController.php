@@ -13,6 +13,7 @@ class InstitucionEjecutoraController extends Controller
 {
     /**
      * Listar instituciones ejecutoras, opcionalmente filtradas por región.
+     * → Devuelve un array puro de InstitucionEjecutora
      */
     public function index(Request $request)
     {
@@ -30,40 +31,20 @@ class InstitucionEjecutoraController extends Controller
                 );
             }
 
-            $instituciones = $query->get()->map(function ($inst) {
-                // Adjuntar arrays de territorios
-                if ($inst->territorio) {
-                    $inst->territorio->regiones   = $inst->territorio->regiones;
-                    $inst->territorio->provincias = $inst->territorio->provincias;
-                    $inst->territorio->comunas    = $inst->territorio->comunas;
-                }
-                // Asegurar que preguntas queden cargadas
-                if ($inst->planDeIntervencion) {
-                    $inst->planDeIntervencion->evaluaciones =
-                        $inst->planDeIntervencion->evaluaciones->map(
-                            fn($ev) => tap($ev, fn($e) => $e->preguntas = $e->preguntas)
-                        );
-                }
-                return $inst;
-            });
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $instituciones,
-            ], Response::HTTP_OK);
+            $instituciones = $query->get();
+            return response()->json($instituciones, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('Error al listar instituciones ejecutoras: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al listar instituciones ejecutoras',
+                'message' => 'Error al listar instituciones ejecutoras'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear una institución ejecutora.
+     * → Devuelve el objeto InstitucionEjecutora creado
      */
     public function store(Request $request)
     {
@@ -96,24 +77,20 @@ class InstitucionEjecutoraController extends Controller
             ]));
             DB::commit();
 
-            return response()->json([
-                'code'    => Response::HTTP_CREATED,
-                'data'    => $institucion,
-            ], Response::HTTP_CREATED);
+            return response()->json($institucion, Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al crear institución ejecutora: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error interno al crear la institución ejecutora',
+                'message' => 'Error interno al crear la institución ejecutora'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar datos de una institución ejecutora.
+     * → Devuelve directamente el objeto InstitucionEjecutora
      */
     public function show($id)
     {
@@ -123,35 +100,24 @@ class InstitucionEjecutoraController extends Controller
                 'territorio'
             ])->findOrFail($id);
 
-            if ($inst->territorio) {
-                $inst->territorio->regiones   = $inst->territorio->regiones;
-                $inst->territorio->provincias = $inst->territorio->provincias;
-                $inst->territorio->comunas    = $inst->territorio->comunas;
-            }
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $inst,
-            ], Response::HTTP_OK);
+            return response()->json($inst, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Institución ejecutora no encontrada',
+                'message' => 'Institución ejecutora no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error al obtener institución ejecutora {$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener la institución ejecutora',
+                'message' => 'Error al obtener la institución ejecutora'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar una institución ejecutora.
+     * → Devuelve el objeto InstitucionEjecutora actualizado
      */
     public function update(Request $request, $id)
     {
@@ -185,30 +151,25 @@ class InstitucionEjecutoraController extends Controller
             ]));
             DB::commit();
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $inst,
-            ], Response::HTTP_OK);
+            return response()->json($inst, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Institución ejecutora no encontrada',
+                'message' => 'Institución ejecutora no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error("Error al actualizar institución ejecutora {$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al actualizar la institución ejecutora',
+                'message' => 'Error al actualizar la institución ejecutora'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar una institución ejecutora.
+     * → Devuelve solo un mensaje de confirmación
      */
     public function destroy($id)
     {
@@ -217,22 +178,18 @@ class InstitucionEjecutoraController extends Controller
             $inst->delete();
 
             return response()->json([
-                'code'    => Response::HTTP_OK,
-                'message' => 'Institución ejecutora eliminada correctamente',
+                'message' => 'Institución ejecutora eliminada correctamente'
             ], Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Institución ejecutora no encontrada',
+                'message' => 'Institución ejecutora no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error al eliminar institución ejecutora {$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al eliminar la institución ejecutora',
+                'message' => 'Error al eliminar la institución ejecutora'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

@@ -7,36 +7,31 @@ use App\Models\Evaluacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class EvaluacionController extends Controller
 {
     /**
      * Listar todas las evaluaciones con sus preguntas
+     * Devuelve directamente un array de Evaluacion
      */
     public function index()
     {
         try {
             $evaluaciones = Evaluacion::with('preguntas')->get();
-
-            return response()->json([
-                'code'    => Response::HTTP_OK,
-                'data'    => $evaluaciones,
-            ], Response::HTTP_OK);
+            return response()->json($evaluaciones, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('Error al listar evaluaciones: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al listar evaluaciones',
+                'message' => 'Error al listar evaluaciones'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear una nueva evaluación
+     * Devuelve el objeto Evaluacion creado
      */
     public function store(Request $request)
     {
@@ -48,58 +43,45 @@ class EvaluacionController extends Controller
 
         DB::beginTransaction();
         try {
-            $evaluacion = Evaluacion::create($request->only([
-                'plan_id', 'nombre', 'num_preguntas'
-            ]));
+            $evaluacion = Evaluacion::create($request->only('plan_id', 'nombre', 'num_preguntas'));
             DB::commit();
-
-            return response()->json([
-                'code'    => Response::HTTP_CREATED,
-                'data'    => $evaluacion,
-            ], Response::HTTP_CREATED);
+            return response()->json($evaluacion, Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al crear evaluación: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al crear evaluación',
+                'message' => 'Error al crear evaluación'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar una evaluación por ID
+     * Devuelve directamente el objeto Evaluacion
      */
     public function show($id)
     {
         try {
             $evaluacion = Evaluacion::with('preguntas')->findOrFail($id);
-
-            return response()->json([
-                'code'    => Response::HTTP_OK,
-                'data'    => $evaluacion,
-            ], Response::HTTP_OK);
+            return response()->json($evaluacion, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Evaluación no encontrada',
+                'message' => 'Evaluación no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error al obtener evaluación {$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener evaluación',
+                'message' => 'Error al obtener evaluación'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar evaluación existente
+     * Devuelve el objeto Evaluacion actualizado
      */
     public function update(Request $request, $id)
     {
@@ -112,65 +94,53 @@ class EvaluacionController extends Controller
         DB::beginTransaction();
         try {
             $evaluacion = Evaluacion::findOrFail($id);
-            $evaluacion->update($request->only([
-                'plan_id', 'nombre', 'num_preguntas'
-            ]));
+            $evaluacion->update($request->only('plan_id', 'nombre', 'num_preguntas'));
             DB::commit();
-
-            return response()->json([
-                'code'    => Response::HTTP_OK,
-                'data'    => $evaluacion,
-            ], Response::HTTP_OK);
+            return response()->json($evaluacion, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Evaluación no encontrada',
+                'message' => 'Evaluación no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error("Error al actualizar evaluación {$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al actualizar evaluación',
+                'message' => 'Error al actualizar evaluación'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar evaluación
+     * Devuelve un mensaje de confirmación
      */
     public function destroy($id)
     {
         try {
             $evaluacion = Evaluacion::findOrFail($id);
             $evaluacion->delete();
-
             return response()->json([
-                'code'    => Response::HTTP_OK,
-                'message' => 'Evaluación eliminada correctamente',
+                'message' => 'Evaluación eliminada correctamente'
             ], Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Evaluación no encontrada',
+                'message' => 'Evaluación no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error al eliminar evaluación {$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al eliminar evaluación',
+                'message' => 'Error al eliminar evaluación'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Listar evaluaciones de un plan que no tienen respuestas
+     * Devuelve directamente un array de Evaluacion
      */
     public function getEvaluacionesSinRespuestas($planId)
     {
@@ -178,21 +148,14 @@ class EvaluacionController extends Controller
             $evaluaciones = Evaluacion::where('plan_id', $planId)
                 ->with('preguntas.respuestas')
                 ->get()
-                ->filter(fn($e) =>
-                    $e->preguntas->every(fn($p) => $p->respuestas->isEmpty())
-                )->values();
-
-            return response()->json([
-                'code'    => Response::HTTP_OK,
-                'data'    => $evaluaciones,
-            ], Response::HTTP_OK);
+                ->filter(fn($e) => $e->preguntas->every(fn($p) => $p->respuestas->isEmpty()))
+                ->values();
+            return response()->json($evaluaciones, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error("Error al listar evaluaciones sin respuestas para plan {$planId}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener evaluaciones',
+                'message' => 'Error al obtener evaluaciones'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

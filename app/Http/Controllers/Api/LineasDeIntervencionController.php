@@ -12,29 +12,25 @@ class LineasDeIntervencionController extends Controller
 {
     /**
      * Listar todas las líneas de intervención
+     * → Devuelve un array puro para el front
      */
     public function index()
     {
         try {
             $lineas = LineasDeIntervencion::all();
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $lineas,
-            ], Response::HTTP_OK);
+            return response()->json($lineas, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('Error en LineasDeIntervencionController@index: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al listar líneas de intervención',
+                'message' => 'Error al listar líneas de intervención'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear una nueva línea de intervención
+     * → Devuelve el objeto creado
      */
     public function store(Request $request)
     {
@@ -44,54 +40,43 @@ class LineasDeIntervencionController extends Controller
         ]);
 
         try {
-            $linea = LineasDeIntervencion::create($request->only(['nombre', 'descripcion']));
-
-            return response()->json([
-                'code' => Response::HTTP_CREATED,
-                'data' => $linea,
-            ], Response::HTTP_CREATED);
+            $linea = LineasDeIntervencion::create($request->only('nombre', 'descripcion'));
+            return response()->json($linea, Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             Log::error('Error en LineasDeIntervencionController@store: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al crear línea de intervención',
+                'message' => 'Error al crear línea de intervención'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar una línea de intervención por ID
+     * → Devuelve el objeto o 404
      */
     public function show($id)
     {
         try {
             $linea = LineasDeIntervencion::findOrFail($id);
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $linea,
-            ], Response::HTTP_OK);
+            return response()->json($linea, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Línea no encontrada',
+                'message' => 'Línea no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error en LineasDeIntervencionController@show id={$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener línea de intervención',
+                'message' => 'Error al obtener línea de intervención'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar una línea de intervención existente
+     * → Devuelve el objeto actualizado
      */
     public function update(Request $request, $id)
     {
@@ -102,55 +87,44 @@ class LineasDeIntervencionController extends Controller
 
         try {
             $linea = LineasDeIntervencion::findOrFail($id);
-            $linea->update($request->only(['nombre', 'descripcion']));
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $linea,
-            ], Response::HTTP_OK);
+            $linea->update($request->only('nombre', 'descripcion'));
+            return response()->json($linea, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Línea no encontrada',
+                'message' => 'Línea no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error en LineasDeIntervencionController@update id={$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al actualizar línea de intervención',
+                'message' => 'Error al actualizar línea de intervención'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar una línea de intervención
+     * → Devuelve mensaje de confirmación
      */
     public function destroy($id)
     {
         try {
             $linea = LineasDeIntervencion::findOrFail($id);
             $linea->delete();
-
             return response()->json([
-                'code'    => Response::HTTP_OK,
-                'message' => 'Línea eliminada correctamente',
+                'message' => 'Línea eliminada correctamente'
             ], Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Línea no encontrada',
+                'message' => 'Línea no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error en LineasDeIntervencionController@destroy id={$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al eliminar línea de intervención',
+                'message' => 'Error al eliminar línea de intervención'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

@@ -13,30 +13,27 @@ class NNAController extends Controller
 {
     /**
      * Listar todos los NNA
+     * → Devuelve un array puro para que el front lo consuma directamente
      */
     public function index()
     {
         try {
             // TODO: reemplaza la siguiente línea con NNA::all()
-            $nnaList = []; 
+            $nnaList = [];
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $nnaList,
-            ], Response::HTTP_OK);
+            return response()->json($nnaList, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('Error en NNAController@index: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al listar NNA',
+                'message' => 'Error al listar NNA'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear un nuevo NNA
+     * → Devuelve el objeto NNA creado
      */
     public function store(Request $request)
     {
@@ -49,26 +46,21 @@ class NNAController extends Controller
         try {
             // TODO: crea el NNA con algo como:
             // $nna = NNA::create($request->only(['campo1', 'campo2', …]));
-
             $nna = null; // placeholder
 
-            return response()->json([
-                'code' => Response::HTTP_CREATED,
-                'data' => $nna,
-            ], Response::HTTP_CREATED);
+            return response()->json($nna, Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             Log::error('Error en NNAController@store: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al crear NNA',
+                'message' => 'Error al crear NNA'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar un NNA por ID
+     * → Devuelve el objeto NNA o 404
      */
     public function show($id)
     {
@@ -76,29 +68,24 @@ class NNAController extends Controller
             // TODO: $nna = NNA::findOrFail($id);
             $nna = null; // placeholder
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $nna,
-            ], Response::HTTP_OK);
+            return response()->json($nna, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'NNA no encontrado',
+                'message' => 'NNA no encontrado'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error en NNAController@show id={$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener NNA',
+                'message' => 'Error al obtener NNA'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar un NNA existente
+     * → Devuelve el objeto actualizado o 404
      */
     public function update(Request $request, $id)
     {
@@ -109,55 +96,44 @@ class NNAController extends Controller
             // TODO: encuentra y actualiza
             // $nna = NNA::findOrFail($id);
             // $nna->update($request->only(['campo1', 'campo2', …]));
-
             $nna = null; // placeholder
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $nna,
-            ], Response::HTTP_OK);
+            return response()->json($nna, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'NNA no encontrado',
+                'message' => 'NNA no encontrado'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error en NNAController@update id={$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al actualizar NNA',
+                'message' => 'Error al actualizar NNA'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar un NNA
+     * → Devuelve mensaje de confirmación o 404
      */
     public function destroy($id)
     {
         try {
             // TODO: NNA::destroy($id);
-            
             return response()->json([
-                'code'    => Response::HTTP_OK,
-                'message' => 'NNA eliminado correctamente',
+                'message' => 'NNA eliminado correctamente'
             ], Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'NNA no encontrado',
+                'message' => 'NNA no encontrado'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error("Error en NNAController@destroy id={$id}: " . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al eliminar NNA',
+                'message' => 'Error al eliminar NNA'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

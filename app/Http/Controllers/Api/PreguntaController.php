@@ -13,29 +13,25 @@ class PreguntaController extends Controller
 {
     /**
      * Listar todas las preguntas
+     * → Devuelve un array puro de Pregunta
      */
     public function index()
     {
         try {
             $preguntas = Pregunta::all();
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $preguntas,
-            ], Response::HTTP_OK);
+            return response()->json($preguntas, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('Error al listar preguntas: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener preguntas',
+                'message' => 'Error al obtener preguntas'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear nueva pregunta
+     * → Devuelve el objeto Pregunta creado
      */
     public function store(Request $request)
     {
@@ -48,58 +44,47 @@ class PreguntaController extends Controller
 
         DB::beginTransaction();
         try {
-            $pregunta = Pregunta::create($request->only(['evaluacion_id', 'pregunta']));
-            Log::info('📝 [STORE] Pregunta creada', ['pregunta_id' => $pregunta->id]);
-
+            $pregunta = Pregunta::create($request->only('evaluacion_id', 'pregunta'));
             DB::commit();
-            return response()->json([
-                'code' => Response::HTTP_CREATED,
-                'data' => $pregunta,
-            ], Response::HTTP_CREATED);
+            return response()->json($pregunta, Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('❌ [STORE] Error al crear la Pregunta: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
                 'message' => 'No se pudo crear la pregunta',
-                'errors'  => ['detalle' => $e->getMessage()],
+                'error'   => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar pregunta específica
+     * → Devuelve el objeto Pregunta o 404
      */
     public function show($id)
     {
         try {
             $pregunta = Pregunta::findOrFail($id);
-
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $pregunta,
-            ], Response::HTTP_OK);
+            return response()->json($pregunta, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Pregunta no encontrada',
+                'message' => 'Pregunta no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error('Error al obtener pregunta: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
                 'message' => 'Error al obtener pregunta',
+                'error'   => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar pregunta existente
+     * → Devuelve el objeto actualizado
      */
     public function update(Request $request, $id)
     {
@@ -113,35 +98,28 @@ class PreguntaController extends Controller
         DB::beginTransaction();
         try {
             $pregunta = Pregunta::findOrFail($id);
-            $pregunta->update($request->only(['evaluacion_id', 'pregunta']));
-            Log::info('✅ [UPDATE] Pregunta actualizada', ['pregunta_id' => $pregunta->id]);
-
+            $pregunta->update($request->only('evaluacion_id', 'pregunta'));
             DB::commit();
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $pregunta,
-            ], Response::HTTP_OK);
+            return response()->json($pregunta, Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Pregunta no encontrada',
+                'message' => 'Pregunta no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('❌ [UPDATE] Error al actualizar la Pregunta: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
                 'message' => 'No se pudo actualizar la pregunta',
-                'errors'  => ['detalle' => $e->getMessage()],
+                'error'   => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar pregunta
+     * → Devuelve mensaje de confirmación
      */
     public function destroy($id)
     {
@@ -150,26 +128,20 @@ class PreguntaController extends Controller
         try {
             $pregunta = Pregunta::findOrFail($id);
             $pregunta->delete();
-            Log::info('✅ [DELETE] Pregunta eliminada correctamente', ['pregunta_id' => $id]);
-
             return response()->json([
-                'code'    => Response::HTTP_OK,
-                'message' => 'Pregunta eliminada correctamente',
+                'message' => 'Pregunta eliminada correctamente'
             ], Response::HTTP_OK);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
-                'code'    => Response::HTTP_NOT_FOUND,
-                'message' => 'Pregunta no encontrada',
+                'message' => 'Pregunta no encontrada'
             ], Response::HTTP_NOT_FOUND);
 
         } catch (\Throwable $e) {
             Log::error('❌ [DELETE] Error al eliminar la Pregunta: ' . $e->getMessage());
-
             return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
                 'message' => 'Error al eliminar la pregunta',
-                'errors'  => ['detalle' => $e->getMessage()],
+                'error'   => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

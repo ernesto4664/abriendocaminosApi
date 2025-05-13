@@ -15,6 +15,7 @@ class PonderacionController extends Controller
 {
     /**
      * Almacenar nueva ponderación con sus detalles
+     * → Devuelve el objeto Ponderacion creado con sus detalles
      */
     public function store(Request $request)
     {
@@ -32,24 +33,13 @@ class PonderacionController extends Controller
         ];
 
         $validator = Validator::make($request->all(), $rules);
-        // Validaciones condicionales según tipo
-        $validator->sometimes('detalles.*.respuesta_correcta_id', 'required|integer|exists:respuestas_opciones,id', function ($input, $detalle) {
-            return in_array($detalle->tipo, ['si_no','si_no_noestoyseguro','5emojis','opcion_personalizada']);
-        });
-        $validator->sometimes('detalles.*.respuesta_correcta_id', 'required|integer|exists:opciones_likert,id', function ($input, $detalle) {
-            return $detalle->tipo === 'likert';
-        });
-        $validator->sometimes('detalles.*.subpregunta_id', 'required|integer|exists:respuestas_subpreguntas,id', function ($input, $detalle) {
-            return $detalle->tipo === 'likert';
-        });
+        $validator->sometimes('detalles.*.respuesta_correcta_id', 'required|integer|exists:respuestas_opciones,id', fn($input, $det) => in_array($det->tipo, ['si_no','si_no_noestoyseguro','5emojis','opcion_personalizada']));
+        $validator->sometimes('detalles.*.respuesta_correcta_id', 'required|integer|exists:opciones_likert,id', fn($input, $det) => $det->tipo === 'likert');
+        $validator->sometimes('detalles.*.subpregunta_id', 'required|integer|exists:respuestas_subpreguntas,id', fn($input, $det) => $det->tipo === 'likert');
 
         if ($validator->fails()) {
             Log::warning('[PONDERACION][STORE] Validación fallida', $validator->errors()->toArray());
-            return response()->json([
-                'code'    => Response::HTTP_UNPROCESSABLE_ENTITY,
-                'message' => 'Errores en la validación',
-                'errors'  => $validator->errors(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json($validator->errors(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         DB::beginTransaction();
@@ -66,38 +56,30 @@ class PonderacionController extends Controller
                     'pregunta_id'           => $det['pregunta_id'],
                     'tipo'                  => $det['tipo'],
                     'valor'                 => $det['valor'],
-                    'respuesta_correcta'    => $det['tipo']==='texto' ? $det['respuesta_correcta'] : null,
+                    'respuesta_correcta'    => $det['tipo'] === 'texto' ? $det['respuesta_correcta'] : null,
                     'respuesta_correcta_id' => in_array($det['tipo'], ['si_no','si_no_noestoyseguro','5emojis','opcion_personalizada','likert'])
                         ? $det['respuesta_correcta_id'] : null,
-                    'subpregunta_id'        => $det['tipo']==='likert' ? $det['subpregunta_id'] : null,
+                    'subpregunta_id'        => $det['tipo'] === 'likert' ? $det['subpregunta_id'] : null,
                 ]);
                 $ponderacion->detalles()->save($detalle);
-                Log::info('[PONDERACION][STORE] Detalle guardado', ['pregunta_id'=>$detalle->pregunta_id,'tipo'=>$detalle->tipo,'valor'=>$detalle->valor]);
+                Log::info('[PONDERACION][STORE] Detalle guardado', ['pregunta_id' => $detalle->pregunta_id, 'tipo' => $detalle->tipo, 'valor' => $detalle->valor]);
             }
 
             DB::commit();
             Log::info('[PONDERACION][STORE] Commit exitoso');
 
-            return response()->json([
-                'code'    => Response::HTTP_CREATED,
-                'message' => 'Ponderaciones guardadas.',
-                'data'    => $ponderacion->load('detalles'),
-            ], Response::HTTP_CREATED);
+            return response()->json($ponderacion->load('detalles'), Response::HTTP_CREATED);
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('[PONDERACION][STORE] Rollback por error: '.$e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al guardar ponderaciones.',
-                'errors'  => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error('[PONDERACION][STORE] Rollback por error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Obtener todas las ponderaciones con detalles enriquecidos
+     * → Devuelve un array puro de estructuras mapeadas
      */
     public function completo()
     {
@@ -130,24 +112,16 @@ class PonderacionController extends Controller
                         'likert'         => optional($det->opcionLikertCorrecta)->label,
                         default          => optional($det->respuestaOpcionCorrecta)->label,
                     },
-                    'subpregunta_id'           => $det->tipo==='likert' ? $det->subpregunta_id : null,
-                    'subpregunta_texto'        => $det->tipo==='likert' ? optional($det->subpregunta)->texto : null,
+                    'subpregunta_id'           => $det->tipo === 'likert' ? $det->subpregunta_id : null,
+                    'subpregunta_texto'        => $det->tipo === 'likert' ? optional($det->subpregunta)->texto : null,
                 ])->values(),
             ]);
 
-            return response()->json([
-                'code' => Response::HTTP_OK,
-                'data' => $result,
-            ], Response::HTTP_OK);
+            return response()->json($result, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
-            Log::error('[PONDERACION][COMPLETO] Error: '.$e->getMessage());
-
-            return response()->json([
-                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
-                'message' => 'Error al obtener las ponderaciones.',
-                'errors'  => $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error('[PONDERACION][COMPLETO] Error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }
