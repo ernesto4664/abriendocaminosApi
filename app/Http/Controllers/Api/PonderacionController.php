@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Api;
-
+use App\Models\MDSFApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Ponderacion;
 use App\Models\DetallePonderacion;
@@ -23,6 +23,8 @@ class PonderacionController extends Controller
 {
     public function store(Request $request)
     {
+        // Inicializar respuesta estandarizada
+        $resp = new MDSFApiResponse();
         Log::info('[PONDERACION][STORE] Inicio de validación', $request->all());
     
         // Reglas base
@@ -60,10 +62,10 @@ class PonderacionController extends Controller
     
         if ($validator->fails()) {
             Log::warning('[PONDERACION][STORE] Validación fallida', $validator->errors()->toArray());
-            return response()->json([
-                'message' => 'Errores en la validación',
-                'errors'  => $validator->errors(),
-            ], 422);
+            $resp->code = 422;
+            $resp->message = 'Errores en la validación';
+            $resp->errors = $validator->errors();
+            return $resp->json();
         }
     
         Log::info('[PONDERACION][STORE] Validación OK, comenzando transacción');
@@ -111,68 +113,77 @@ class PonderacionController extends Controller
             DB::commit();
             Log::info('[PONDERACION][STORE] Commit exitoso');
     
-            return response()->json([
-                'message'     => 'Ponderaciones guardadas.',
-                'ponderacion' => $ponderacion->load('detalles'),
-            ], 201);
-    
+            $resp->code = 201;
+            $resp->message = 'Ponderaciones guardadas.';
+            $resp->data = $ponderacion->load('detalles');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('[PONDERACION][STORE] Rollback por error', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Error al guardar ponderaciones.'], 500);
+            $resp->code = 500;
+            $resp->message = 'Error al guardar ponderaciones.';
+            $resp->errors = $e->getMessage();
         }
+    
+        return $resp->json();
     }
     
     public function completo()
     {
+        // Inicializar respuesta estandarizada
+        $resp = new MDSFApiResponse();
         Log::info('[PONDERACION][COMPLETO] Inicio');
     
-        $all = Ponderacion::with([
-            'evaluacion:id,nombre',
-            'detalles.pregunta:id,pregunta',
-            'detalles.subpregunta:id,texto',
-            'detalles.respuestaOpcionCorrecta:id,label',
-            'detalles.opcionLikertCorrecta:id,label',
-        ])->get();
+        try {
+            $all = Ponderacion::with([
+                'evaluacion:id,nombre',
+                'detalles.pregunta:id,pregunta',
+                'detalles.subpregunta:id,texto',
+                'detalles.respuestaOpcionCorrecta:id,label',
+                'detalles.opcionLikertCorrecta:id,label',
+            ])->get();
     
-        $result = $all->map(function (Ponderacion $p) {
-            return [
-                'id'                => $p->id,
-                'plan_id'           => $p->plan_id,
-                'evaluacion_id'     => $p->evaluacion_id,
-                'evaluacion_nombre' => $p->evaluacion->nombre,
-                'total_puntos'      => $p->detalles->sum('valor'),
-                'detalles'          => $p->detalles->map(function ($det) {
-                    // elegimos el label correcto según el tipo
-                    if (in_array($det->tipo, ['texto', 'numero'])) {
-                        $label = $det->respuesta_correcta;   // el texto o número
-                    } elseif ($det->tipo === 'likert') {
-                        $label = optional($det->opcionLikertCorrecta)->label;
-                    } else {
-                        $label = optional($det->respuestaOpcionCorrecta)->label;
-                    }
+            $result = $all->map(function (Ponderacion $p) {
+                return [
+                    'id'                => $p->id,
+                    'plan_id'           => $p->plan_id,
+                    'evaluacion_id'     => $p->evaluacion_id,
+                    'evaluacion_nombre' => $p->evaluacion->nombre,
+                    'total_puntos'      => $p->detalles->sum('valor'),
+                    'detalles'          => $p->detalles->map(function ($det) {
+                        // elegimos el label correcto según el tipo
+                        if (in_array($det->tipo, ['texto', 'numero'])) {
+                            $label = $det->respuesta_correcta;
+                        } elseif ($det->tipo === 'likert') {
+                            $label = optional($det->opcionLikertCorrecta)->label;
+                        } else {
+                            $label = optional($det->respuestaOpcionCorrecta)->label;
+                        }
     
-                    return [
-                        'id'                       => $det->id,
-                        'pregunta_id'              => $det->pregunta_id,
-                        'pregunta_texto'           => $det->pregunta->pregunta,
-                        'tipo'                     => $det->tipo,
-                        'valor'                    => $det->valor,
-                        'respuesta_correcta_id'    => $det->respuesta_correcta_id,
-                        'respuesta_correcta_label' => $label,
-                        'subpregunta_id'           => $det->tipo === 'likert'
-                                                       ? $det->subpregunta_id
-                                                       : null,
-                        'subpregunta_texto'        => $det->tipo === 'likert'
-                                                       ? optional($det->subpregunta)->texto
-                                                       : null,
-                    ];
-                })->values(),
-            ];
-        });
+                        return [
+                            'id'                       => $det->id,
+                            'pregunta_id'              => $det->pregunta_id,
+                            'pregunta_texto'           => $det->pregunta->pregunta,
+                            'tipo'                     => $det->tipo,
+                            'valor'                    => $det->valor,
+                            'respuesta_correcta_id'    => $det->respuesta_correcta_id,
+                            'respuesta_correcta_label' => $label,
+                            'subpregunta_id'           => $det->tipo === 'likert' ? $det->subpregunta_id : null,
+                            'subpregunta_texto'        => $det->tipo === 'likert' ? optional($det->subpregunta)->texto : null,
+                        ];
+                    })->values(),
+                ];
+            });
     
-        Log::info('[PONDERACION][COMPLETO] Fin');
-        return response()->json($result);
+            $resp->code = 200;
+            $resp->data = $result;
+        } catch (\Exception $e) {
+            Log::error('[PONDERACION][COMPLETO] Error', ['error' => $e->getMessage()]);
+            $resp->code = 500;
+            $resp->message = 'Error al obtener las ponderaciones.';
+            $resp->errors = $e->getMessage();
+        }
+
+        return $resp->json();
     }
-    
 }
+

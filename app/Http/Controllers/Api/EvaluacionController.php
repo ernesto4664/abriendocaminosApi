@@ -4,89 +4,142 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Evaluacion;
+use App\Models\MDSFApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
-class EvaluacionController extends Controller {
-    
-    public function index() {
+class EvaluacionController extends Controller
+{
+    public function index()
+    {
+        $respuesta = new MDSFApiResponse();
 
-        return response()->json(Evaluacion::with('preguntas')->get(), 200);
+        try {
+            $evaluaciones = Evaluacion::with('preguntas')->get();
+            $respuesta->data = $evaluaciones;
+            $respuesta->code = 200;
+        } catch (\Exception $e) {
+            Log::error('Error al listar evaluaciones: ' . $e->getMessage());
+            $respuesta->code    = 500;
+            $respuesta->message = 'Error al listar evaluaciones';
+        }
+
+        return $respuesta->json();
     }
 
-    public function store(Request $request) {
-
-        Log::info('📌 [STORE] Recibida solicitud para crear una Evaluación', ['data' => $request->all()]);
+    public function store(Request $request)
+    {
+        $respuesta = new MDSFApiResponse();
 
         $request->validate([
-            'plan_id' => 'required|exists:planes_intervencion,id', // ✅ Tabla corregida
-            'nombre' => 'required|string|max:255',
-            'num_preguntas' => 'required|integer|min:1|max:50'
+            'plan_id'       => 'required|exists:planes_intervencion,id',
+            'nombre'        => 'required|string|max:255',
+            'num_preguntas' => 'required|integer|min:1|max:50',
         ]);
 
         DB::beginTransaction();
-
         try {
-            $evaluacion = Evaluacion::create($request->all());
-
-            Log::info('📝 [STORE] Evaluación creada', ['evaluacion_id' => $evaluacion->id]);
-
+            $evaluacion = Evaluacion::create($request->only(['plan_id', 'nombre', 'num_preguntas']));
             DB::commit();
-            return response()->json($evaluacion, 201);
 
+            $respuesta->data = $evaluacion;
+            $respuesta->code = 201;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ [STORE] Error al crear la Evaluación', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'No se pudo crear la evaluación', 'detalle' => $e->getMessage()], 500);
+            Log::error('Error al crear evaluación: ' . $e->getMessage());
+            $respuesta->code    = 500;
+            $respuesta->message = 'Error al crear evaluación';
         }
+
+        return $respuesta->json();
     }
 
-    public function show($id) {
+    public function show($id)
+    {
+        $respuesta = new MDSFApiResponse();
 
-        return response()->json(Evaluacion::with('preguntas')->findOrFail($id), 200);
+        try {
+            $evaluacion = Evaluacion::with('preguntas')->findOrFail($id);
+            $respuesta->data = $evaluacion;
+            $respuesta->code = 200;
+        } catch (\Exception $e) {
+            Log::error("Error al obtener evaluación {$id}: " . $e->getMessage());
+            $respuesta->code    = 404;
+            $respuesta->message = 'Evaluación no encontrada';
+        }
+
+        return $respuesta->json();
     }
 
-    public function update(Request $request, $id) {
+    public function update(Request $request, $id)
+    {
+        $respuesta = new MDSFApiResponse();
 
-        Log::info('📌 [UPDATE] Actualizando Evaluación', ['evaluacion_id' => $id, 'data' => $request->all()]);
+        $request->validate([
+            'plan_id'       => 'sometimes|required|exists:planes_intervencion,id',
+            'nombre'        => 'sometimes|required|string|max:255',
+            'num_preguntas' => 'sometimes|required|integer|min:1|max:50',
+        ]);
 
-        $evaluacion = Evaluacion::findOrFail($id);
         DB::beginTransaction();
-
         try {
-            $evaluacion->update($request->all());
-
-            Log::info('✅ [UPDATE] Evaluación actualizada', ['evaluacion_id' => $evaluacion->id]);
-
+            $evaluacion = Evaluacion::findOrFail($id);
+            $evaluacion->update($request->only(['plan_id', 'nombre', 'num_preguntas']));
             DB::commit();
-            return response()->json($evaluacion, 200);
 
+            $respuesta->data = $evaluacion;
+            $respuesta->code = 200;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('❌ [UPDATE] Error al actualizar la Evaluación', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'No se pudo actualizar la evaluación', 'detalle' => $e->getMessage()], 500);
+            Log::error("Error al actualizar evaluación {$id}: " . $e->getMessage());
+            $respuesta->code    = isset($evaluacion) ? 500 : 404;
+            $respuesta->message = isset($evaluacion)
+                ? 'Error al actualizar evaluación'
+                : 'Evaluación no encontrada';
         }
+
+        return $respuesta->json();
     }
 
-    public function destroy($id) {
-        
-        Evaluacion::destroy($id);
-        return response()->json(['message' => 'Evaluación eliminada correctamente'], 200);
+    public function destroy($id)
+    {
+        $respuesta = new MDSFApiResponse();
+
+        try {
+            $evaluacion = Evaluacion::findOrFail($id);
+            $evaluacion->delete();
+
+            $respuesta->message = 'Evaluación eliminada correctamente';
+            $respuesta->code    = 200;
+        } catch (\Exception $e) {
+            Log::error("Error al eliminar evaluación {$id}: " . $e->getMessage());
+            $respuesta->code    = 404;
+            $respuesta->message = 'Evaluación no encontrada o no pudo eliminarse';
+        }
+
+        return $respuesta->json();
     }
 
     public function getEvaluacionesSinRespuestas($planId)
     {
-        $evaluaciones = Evaluacion::where('plan_id', $planId)
-            ->with(['preguntas'])
-            ->get()
-            ->filter(function ($evaluacion) {
-                return !$evaluacion->preguntas->some(fn($p) => $p->respuestas()->exists());
-            })
-            ->values(); // ✅ Reiniciar índices del array
-    
-        return response()->json(['evaluaciones' => $evaluaciones]);
-    }
-    
+        $respuesta = new MDSFApiResponse();
 
+        try {
+            $evaluaciones = Evaluacion::where('plan_id', $planId)
+                ->with('preguntas.respuestas')
+                ->get()
+                ->filter(fn($e) => $e->preguntas->every(fn($p) => $p->respuestas->isEmpty()))
+                ->values();
+
+            $respuesta->data = $evaluaciones;
+            $respuesta->code = 200;
+        } catch (\Exception $e) {
+            Log::error("Error al listar evaluaciones sin respuestas para plan {$planId}: " . $e->getMessage());
+            $respuesta->code    = 500;
+            $respuesta->message = 'Error al obtener evaluaciones';
+        }
+
+        return $respuesta->json();
+    }
 }

@@ -6,10 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Territorio;
 use App\Models\LineasDeIntervencion;
-use App\Models\Region;
-use App\Models\Provincia;
-use App\Models\Comuna;
-
+use App\Models\MDSFApiResponse;
 use Illuminate\Support\Facades\Log;
 
 class TerritorioController extends Controller
@@ -19,67 +16,104 @@ class TerritorioController extends Controller
      */
     public function index()
     {
-        $territorios = Territorio::with('linea')->get();
-    
-        foreach ($territorios as $territorio) {
-            $territorio->regiones = $territorio->regiones;
-            $territorio->provincias = $territorio->provincias;
-            $territorio->comunas = $territorio->comunas;
-            $territorio->linea = $territorio->linea ? $territorio->linea->nombre : 'Sin asignar'; // ✅ Devuelve solo el nombre
+        $resp = new MDSFApiResponse();
+
+        try {
+            $territorios = Territorio::with('linea')->get()->map(function($t) {
+                $t->regiones   = $t->regiones;
+                $t->provincias = $t->provincias;
+                $t->comunas    = $t->comunas;
+                $t->linea      = $t->linea ? $t->linea->nombre : 'Sin asignar';
+                return $t;
+            });
+
+            $resp->data    = $territorios;
+            $resp->code    = 200;
+        } catch (\Exception $e) {
+            Log::error('[Territorio][index] '.$e->getMessage());
+            $resp->code    = 500;
+            $resp->message = 'Error al listar territorios';
+            $resp->error   = $e->getMessage();
         }
-    
-        return response()->json($territorios);
+
+        return $resp->json();
     }
-      
+
+    /**
+     * Mostrar un territorio por ID.
+     */
     public function show($id)
     {
-        $territorio = Territorio::with('linea')->find($id);
-    
-        if (!$territorio) {
-            return response()->json(['error' => 'Territorio no encontrado'], 404);
+        $resp = new MDSFApiResponse();
+
+        try {
+            $t = Territorio::with('linea')->find($id);
+            if (!$t) {
+                $resp->code    = 404;
+                $resp->message = 'Territorio no encontrado';
+                return $resp->json();
+            }
+
+            $t->regiones   = $t->regiones;
+            $t->provincias = $t->provincias;
+            $t->comunas    = $t->comunas;
+            $t->linea      = $t->linea ? $t->linea->nombre : 'Sin asignar';
+
+            $resp->data = $t;
+            $resp->code = 200;
+        } catch (\Exception $e) {
+            Log::error('[Territorio][show] '.$e->getMessage());
+            $resp->code    = 500;
+            $resp->message = 'Error al obtener territorio';
+            $resp->error   = $e->getMessage();
         }
-    
-        $territorio->regiones = $territorio->regiones;
-        $territorio->provincias = $territorio->provincias;
-        $territorio->comunas = $territorio->comunas;
-        $territorio->linea = $territorio->linea ? $territorio->linea->nombre : 'Sin asignar';
-    
-        return response()->json($territorio);
+
+        return $resp->json();
     }
-    
-    
-    
+
     /**
      * Crear un nuevo territorio.
      */
     public function store(Request $request)
     {
+        $resp = new MDSFApiResponse();
+
         $request->validate([
             'nombre_territorio' => 'required|string|max:255',
-            'cod_territorio' => 'required|integer',
-            'comuna_id' => 'required|array',
-            'provincia_id' => 'required|array',
-            'region_id' => 'required|array',
-            'plazas' => 'nullable|integer',
-            'linea_id' => 'required|integer', // ✅ Se usa línea_id
-            'cuota_1' => 'nullable|numeric',
-            'cuota_2' => 'nullable|numeric',
+            'cod_territorio'    => 'required|integer',
+            'comuna_id'         => 'required|array',
+            'provincia_id'      => 'required|array',
+            'region_id'         => 'required|array',
+            'plazas'            => 'nullable|integer',
+            'linea_id'          => 'required|integer',
+            'cuota_1'           => 'nullable|numeric',
+            'cuota_2'           => 'nullable|numeric',
         ]);
 
-        $territorio = Territorio::create([
-            'nombre_territorio' => $request->nombre_territorio,
-            'cod_territorio' => $request->cod_territorio,
-            'comuna_id' => $request->comuna_id,
-            'provincia_id' => $request->provincia_id,
-            'region_id' => $request->region_id,
-            'plazas' => $request->plazas,
-            'linea_id' => $request->linea_id, // ✅ Se usa línea_id
-            'cuota_1' => $request->cuota_1,
-            'cuota_2' => $request->cuota_2,
-            'total' => ($request->cuota_1 ?? 0) + ($request->cuota_2 ?? 0),
-        ]);
+        try {
+            $t = Territorio::create([
+                'nombre_territorio' => $request->nombre_territorio,
+                'cod_territorio'    => $request->cod_territorio,
+                'comuna_id'         => $request->comuna_id,
+                'provincia_id'      => $request->provincia_id,
+                'region_id'         => $request->region_id,
+                'plazas'            => $request->plazas,
+                'linea_id'          => $request->linea_id,
+                'cuota_1'           => $request->cuota_1,
+                'cuota_2'           => $request->cuota_2,
+                'total'             => ($request->cuota_1 ?? 0) + ($request->cuota_2 ?? 0),
+            ]);
 
-        return response()->json($territorio, 201);
+            $resp->data = $t;
+            $resp->code = 201;
+        } catch (\Exception $e) {
+            Log::error('[Territorio][store] '.$e->getMessage());
+            $resp->code    = 500;
+            $resp->message = 'Error al crear territorio';
+            $resp->error   = $e->getMessage();
+        }
+
+        return $resp->json();
     }
 
     /**
@@ -87,57 +121,82 @@ class TerritorioController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $territorio = Territorio::find($id);
+        $resp = new MDSFApiResponse();
 
-        if (!$territorio) {
-            return response()->json(['error' => 'Territorio no encontrado'], 404);
+        try {
+            $t = Territorio::find($id);
+            if (!$t) {
+                $resp->code    = 404;
+                $resp->message = 'Territorio no encontrado';
+                return $resp->json();
+            }
+
+            $request->validate([
+                'nombre_territorio' => 'sometimes|string|max:255',
+                'cod_territorio'    => 'sometimes|integer',
+                'comuna_id'         => 'sometimes|array',
+                'provincia_id'      => 'sometimes|array',
+                'region_id'         => 'sometimes|array',
+                'plazas'            => 'nullable|integer',
+                'linea_id'          => 'sometimes|integer',
+                'cuota_1'           => 'nullable|numeric',
+                'cuota_2'           => 'nullable|numeric',
+            ]);
+
+            $t->update([
+                'nombre_territorio' => $request->nombre_territorio ?? $t->nombre_territorio,
+                'cod_territorio'    => $request->cod_territorio ?? $t->cod_territorio,
+                'comuna_id'         => $request->has('comuna_id') ? array_map('intval',$request->comuna_id) : $t->comuna_id,
+                'provincia_id'      => $request->has('provincia_id') ? array_map('intval',$request->provincia_id) : $t->provincia_id,
+                'region_id'         => $request->has('region_id') ? array_map('intval',$request->region_id) : $t->region_id,
+                'plazas'            => $request->plazas ?? $t->plazas,
+                'linea_id'          => $request->linea_id ?? $t->linea_id,
+                'cuota_1'           => $request->cuota_1 ?? $t->cuota_1,
+                'cuota_2'           => $request->cuota_2 ?? $t->cuota_2,
+                'total'             => ($request->cuota_1 ?? $t->cuota_1 ?? 0) + ($request->cuota_2 ?? $t->cuota_2 ?? 0),
+            ]);
+
+            $t->linea = $t->linea_id
+                ? LineasDeIntervencion::where('id',$t->linea_id)->value('nombre')
+                : null;
+
+            $resp->data = $t;
+            $resp->code = 200;
+        } catch (\Exception $e) {
+            Log::error('[Territorio][update] '.$e->getMessage());
+            $resp->code    = 500;
+            $resp->message = 'Error al actualizar territorio';
+            $resp->error   = $e->getMessage();
         }
 
-        $request->validate([
-            'nombre_territorio' => 'sometimes|string|max:255',
-            'cod_territorio' => 'sometimes|integer',
-            'comuna_id' => 'sometimes|array',
-            'provincia_id' => 'sometimes|array',
-            'region_id' => 'sometimes|array',
-            'plazas' => 'nullable|integer',
-            'linea_id' => 'sometimes|integer', // ✅ Se usa línea_id
-            'cuota_1' => 'nullable|numeric',
-            'cuota_2' => 'nullable|numeric',
-        ]);
-
-        $territorio->update([
-            'nombre_territorio' => $request->nombre_territorio ?? $territorio->nombre_territorio,
-            'cod_territorio' => $request->cod_territorio ?? $territorio->cod_territorio,
-            'comuna_id' => $request->has('comuna_id') ? array_map('intval', $request->comuna_id) : $territorio->comuna_id,
-            'provincia_id' => $request->has('provincia_id') ? array_map('intval', $request->provincia_id) : $territorio->provincia_id,
-            'region_id' => $request->has('region_id') ? array_map('intval', $request->region_id) : $territorio->region_id,
-            'plazas' => $request->plazas ?? $territorio->plazas,
-            'linea_id' => $request->linea_id ?? $territorio->linea_id, // ✅ Se usa línea_id
-            'cuota_1' => $request->cuota_1 ?? $territorio->cuota_1,
-            'cuota_2' => $request->cuota_2 ?? $territorio->cuota_2,
-            'total' => ($request->cuota_1 ?? $territorio->cuota_1 ?? 0) + ($request->cuota_2 ?? $territorio->cuota_2 ?? 0),
-        ]);
-
-        // ✅ Agregar la línea de intervención asociada
-        $territorio->linea = $territorio->linea_id 
-            ? LineasDeIntervencion::where('id', $territorio->linea_id)->value('nombre') 
-            : null;
-
-        return response()->json($territorio);
+        return $resp->json();
     }
 
     /**
-     * Eliminar un territorio sin eliminación en cascada.
+     * Eliminar un territorio.
      */
     public function destroy($id)
     {
-        $territorio = Territorio::find($id);
+        $resp = new MDSFApiResponse();
 
-        if (!$territorio) {
-            return response()->json(['error' => 'Territorio no encontrado'], 404);
+        try {
+            $t = Territorio::find($id);
+            if (!$t) {
+                $resp->code    = 404;
+                $resp->message = 'Territorio no encontrado';
+                return $resp->json();
+            }
+
+            $t->delete();
+            $resp->code    = 200;
+            $resp->message = 'Territorio eliminado correctamente';
+        } catch (\Exception $e) {
+            Log::error('[Territorio][destroy] '.$e->getMessage());
+            $resp->code    = 500;
+            $resp->message = 'Error al eliminar territorio';
+            $resp->error   = $e->getMessage();
         }
 
-        $territorio->delete();
-        return response()->json(['message' => 'Territorio eliminado correctamente'], 200);
+        return $resp->json();
     }
 }
