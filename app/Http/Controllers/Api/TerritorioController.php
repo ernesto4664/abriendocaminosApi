@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Territorio;
+use App\Models\Region;
+use App\Models\Provincia;
+use App\Models\Comuna;
 use App\Models\LineasDeIntervencion;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,26 +21,54 @@ class TerritorioController extends Controller
     public function index()
     {
         try {
-            $territorios = Territorio::with('linea')->get()->map(fn($t) => [
-                'id'         => $t->id,
-                'nombre'     => $t->nombre_territorio,
-                'linea'      => $t->linea?->nombre ?? 'Sin asignar',
-                'regiones'   => $t->regiones,
-                'provincias' => $t->provincias,
-                'comunas'    => $t->comunas,
-                'plazas'     => $t->plazas,
-                'cuotas'     => [
-                    'cuota_1' => $t->cuota_1,
-                    'cuota_2' => $t->cuota_2,
-                    'total'   => $t->total,
-                ],
-            ]);
+            $territorios = Territorio::with('linea')->get()->map(function ($t) {
+                // 1) Obtener los IDs, ya sea string JSON o array
+                $regionIds    = is_string($t->region_id)
+                                 ? json_decode($t->region_id, true)
+                                 : ($t->region_id ?? []);
+                $provinciaIds = is_string($t->provincia_id)
+                                 ? json_decode($t->provincia_id, true)
+                                 : ($t->provincia_id ?? []);
+                $comunaIds    = is_string($t->comuna_id)
+                                 ? json_decode($t->comuna_id, true)
+                                 : ($t->comuna_id ?? []);
+
+                // 2) Recuperar los modelos
+                $regiones   = Region::whereIn('id', $regionIds)->get();
+                $provincias = Provincia::whereIn('id', $provinciaIds)->get();
+                $comunas    = Comuna::whereIn('id', $comunaIds)->get();
+
+                return [
+                    'id'                => $t->id,
+                    'nombre_territorio' => $t->nombre_territorio,
+                    'cod_territorio'    => $t->cod_territorio,
+                    'linea'             => $t->linea
+                                             ? ['id' => $t->linea->id, 'nombre' => $t->linea->nombre]
+                                             : null,
+                    'regiones'          => $regiones,
+                    'provincias'        => $provincias,
+                    'comunas'           => $comunas,
+                    // campos para el front
+                    'region_nombres'    => $regiones->pluck('nombre')->join(', '),
+                    'provincia_nombres' => $provincias->pluck('nombre')->join(', '),
+                    'comuna_nombres'    => $comunas->pluck('nombre')->join(', '),
+                    'plazas'            => $t->plazas,
+                    'cuotas'            => [
+                        'cuota_1' => $t->cuota_1,
+                        'cuota_2' => $t->cuota_2,
+                        'total'   => $t->total,
+                    ],
+                ];
+            });
 
             return response()->json($territorios, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('[Territorio][index] ' . $e->getMessage());
-            return response()->json(['message' => 'Error al listar territorios'], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(
+                ['message' => 'Error al listar territorios'],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
