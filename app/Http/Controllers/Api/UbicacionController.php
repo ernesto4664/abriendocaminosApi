@@ -7,78 +7,88 @@ use Illuminate\Http\Request;
 use App\Models\Region;
 use App\Models\Provincia;
 use App\Models\Comuna;
-use App\Models\MDSFApiResponse;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class UbicacionController extends Controller
 {
     /**
-     * Obtener todas las regiones.
+     * Obtener todas las regiones
      */
     public function getRegiones()
     {
-        $resp = new MDSFApiResponse();
-
         try {
-            $resp->data = Region::all();
-            $resp->code = 200;
-        } catch (\Exception $e) {
-            Log::error('[Ubicacion][getRegiones] ' . $e->getMessage());
-            $resp->code    = 500;
-            $resp->message = 'Error al obtener regiones';
-            $resp->error   = $e->getMessage();
-        }
+            $regiones = Region::all();
 
-        return $resp->json();
+            return response()->json([
+                'code' => Response::HTTP_OK,
+                'data' => $regiones,
+            ], Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('[Ubicacion][getRegiones] ' . $e->getMessage());
+
+            return response()->json([
+                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Error al obtener regiones',
+                'error'   => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
-     * Obtener provincias según una o varias regiones.
+     * Obtener provincias según una o varias regiones
      */
     public function getProvincias(Request $request)
     {
-        $resp = new MDSFApiResponse();
-
         $regionIds = $request->query('region_ids');
         if (!$regionIds) {
-            $resp->code    = 400;
-            $resp->message = 'No se han enviado regiones';
-            return $resp->json();
+            return response()->json([
+                'code'    => Response::HTTP_BAD_REQUEST,
+                'message' => 'Se requieren IDs de regiones',
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
             $ids = is_string($regionIds) ? explode(',', $regionIds) : (array)$regionIds;
-            $provincias = Provincia::whereIn('region_id', $ids)->with('comunas')->get();
+            $provincias = Provincia::whereIn('region_id', $ids)
+                ->with('comunas')
+                ->get();
 
             if ($provincias->isEmpty()) {
-                $resp->code    = 404;
-                $resp->message = 'No se encontraron provincias';
-            } else {
-                $resp->data = $provincias;
-                $resp->code = 200;
+                return response()->json([
+                    'code'    => Response::HTTP_NOT_FOUND,
+                    'message' => 'No se encontraron provincias',
+                ], Response::HTTP_NOT_FOUND);
             }
-        } catch (\Exception $e) {
-            Log::error('[Ubicacion][getProvincias] ' . $e->getMessage());
-            $resp->code    = 500;
-            $resp->message = 'Error al obtener provincias';
-            $resp->error   = $e->getMessage();
-        }
 
-        return $resp->json();
+            return response()->json([
+                'code' => Response::HTTP_OK,
+                'data' => $provincias,
+            ], Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('[Ubicacion][getProvincias] ' . $e->getMessage());
+
+            return response()->json([
+                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Error al obtener provincias',
+                'error'   => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
-     * Obtener comunas según una o varias provincias.
+     * Obtener comunas según una o varias provincias
      */
     public function getComunas(Request $request)
     {
-        $resp = new MDSFApiResponse();
-
         $provinciaIds = $request->query('provincia_ids');
         if (!$provinciaIds) {
-            $resp->code    = 400;
-            $resp->message = 'No se han proporcionado IDs de provincia';
-            return $resp->json();
+            return response()->json([
+                'code'    => Response::HTTP_BAD_REQUEST,
+                'message' => 'Se requieren IDs de provincias',
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         try {
@@ -86,19 +96,25 @@ class UbicacionController extends Controller
             $comunas = Comuna::whereIn('provincia_id', $ids)->get();
 
             if ($comunas->isEmpty()) {
-                $resp->code    = 404;
-                $resp->message = 'No se encontraron comunas';
-            } else {
-                $resp->data = $comunas;
-                $resp->code = 200;
+                return response()->json([
+                    'code'    => Response::HTTP_NOT_FOUND,
+                    'message' => 'No se encontraron comunas',
+                ], Response::HTTP_NOT_FOUND);
             }
-        } catch (\Exception $e) {
-            Log::error('[Ubicacion][getComunas] ' . $e->getMessage());
-            $resp->code    = 500;
-            $resp->message = 'Error al obtener comunas';
-            $resp->error   = $e->getMessage();
-        }
 
-        return $resp->json();
+            return response()->json([
+                'code' => Response::HTTP_OK,
+                'data' => $comunas,
+            ], Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            Log::error('[Ubicacion][getComunas] ' . $e->getMessage());
+
+            return response()->json([
+                'code'    => Response::HTTP_INTERNAL_SERVER_ERROR,
+                'message' => 'Error al obtener comunas',
+                'error'   => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }

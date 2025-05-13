@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UsuariosInstitucion;
-use App\Models\MDSFApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -17,8 +16,6 @@ class AuthUsuariosInstitucionController extends Controller
      */
     public function register(Request $request)
     {
-        $respuesta = new MDSFApiResponse();
-
         $request->validate([
             'nombres'           => 'required|string|max:255',
             'apellidos'         => 'required|string|max:255',
@@ -35,22 +32,38 @@ class AuthUsuariosInstitucionController extends Controller
         ]);
 
         try {
-            $data = $request->all();
-            $data['password'] = Hash::make($data['password']);
+            $data = $request->only([
+                'nombres',
+                'apellidos',
+                'rut',
+                'sexo',
+                'fecha_nacimiento',
+                'profesion',
+                'email',
+                'region_id',
+                'provincia_id',
+                'comuna_id',
+                'institucion_id',
+            ]);
+            $data['password'] = Hash::make($request->password);
             $data['rol']      = 'PROFESIONAL';
 
             $usuario = UsuariosInstitucion::create($data);
 
-            $respuesta->data    = $usuario;
-            $respuesta->code    = 201;
-            $respuesta->message = 'Usuario registrado correctamente';
-        } catch (\Exception $e) {
-            Log::error('Error al registrar usuario de institución: '.$e->getMessage());
-            $respuesta->code    = 500;
-            $respuesta->message = 'Error interno al registrar el usuario';
-        }
+            return response()->json([
+                'code'    => 201,
+                'message' => 'Usuario registrado correctamente',
+                'data'    => $usuario,
+            ], 201);
 
-        return $respuesta->json();
+        } catch (\Exception $e) {
+            Log::error('Error al registrar usuario de institución: ' . $e->getMessage());
+
+            return response()->json([
+                'code'    => 500,
+                'message' => 'Error interno al registrar el usuario',
+            ], 500);
+        }
     }
 
     /**
@@ -58,8 +71,6 @@ class AuthUsuariosInstitucionController extends Controller
      */
     public function login(Request $request)
     {
-        $respuesta = new MDSFApiResponse();
-
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string|min:6',
@@ -76,23 +87,29 @@ class AuthUsuariosInstitucionController extends Controller
 
             $token = $usuario->createToken('authToken')->plainTextToken;
 
-            $respuesta->data = [
-                'usuario' => $usuario,
-                'token'   => $token
-            ];
-            $respuesta->code    = 200;
-            $respuesta->message = 'Inicio de sesión exitoso';
-        } catch (ValidationException $ve) {
-            // errores de validación de credenciales
-            $respuesta->code    = 422;
-            $respuesta->message = 'Credenciales inválidas';
-            $respuesta->errors  = $ve->errors();
-        } catch (\Exception $e) {
-            Log::error('Error en login de usuario de institución: '.$e->getMessage());
-            $respuesta->code    = 500;
-            $respuesta->message = 'Error interno al iniciar sesión';
-        }
+            return response()->json([
+                'code'    => 200,
+                'message' => 'Inicio de sesión exitoso',
+                'data'    => [
+                    'usuario' => $usuario,
+                    'token'   => $token
+                ],
+            ], 200);
 
-        return $respuesta->json();
+        } catch (ValidationException $ve) {
+            return response()->json([
+                'code'    => 422,
+                'message' => 'Credenciales inválidas',
+                'errors'  => $ve->errors(),
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Error en login de usuario de institución: ' . $e->getMessage());
+
+            return response()->json([
+                'code'    => 500,
+                'message' => 'Error interno al iniciar sesión',
+            ], 500);
+        }
     }
 }
