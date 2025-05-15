@@ -148,9 +148,14 @@ class EvaluacionController extends Controller
             $evaluaciones = Evaluacion::where('plan_id', $planId)
                 ->with('preguntas.respuestas')
                 ->get()
-                ->filter(fn($e) => $e->preguntas->every(fn($p) => $p->respuestas->isEmpty()))
+                ->filter(fn($e) =>
+                    $e->preguntas->every(fn($p) => $p->respuestas->isEmpty())
+                )
                 ->values();
-            return response()->json($evaluaciones, Response::HTTP_OK);
+
+            return response()->json([
+                'evaluaciones' => $evaluaciones
+            ], Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error("Error al listar evaluaciones sin respuestas para plan {$planId}: " . $e->getMessage());

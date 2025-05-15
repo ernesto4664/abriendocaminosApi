@@ -4,34 +4,32 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PlanIntervencion;
+use App\Models\Pregunta;
+use App\Models\Respuesta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class PlanIntervencionController extends Controller
 {
     /**
      * Listar todos los planes de intervención
-     * → Devuelve un array puro para el front
      */
     public function index()
     {
         try {
             $planes = PlanIntervencion::with(['evaluaciones', 'linea'])->get();
             return response()->json($planes, Response::HTTP_OK);
-
         } catch (\Throwable $e) {
             Log::error('Error en PlanIntervencionController@index: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al listar planes de intervención'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al listar planes de intervención'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Listar planes con todos sus detalles (evaluaciones, preguntas, respuestas, etc.)
-     * → Devuelve un array puro
      */
     public function indexCompleto()
     {
@@ -40,24 +38,20 @@ class PlanIntervencionController extends Controller
             $planes = PlanIntervencion::with([
                 'evaluaciones.preguntas.tiposDeRespuesta',
                 'evaluaciones.preguntas.respuestas.opciones',
-                'evaluaciones.preguntas.respuestas.subpreguntas.opcionesLikert',
+                'evaluaciones.preguntas.respuestas.subpreguntas.opciones',
                 'evaluaciones.preguntas.respuestas.opcionesBarraSatisfaccion',
                 'evaluaciones.preguntas.respuestas.opcionesLikert',
             ])->get();
             Log::info('[indexCompleto] Cargados ' . $planes->count() . ' planes');
             return response()->json($planes, Response::HTTP_OK);
-
         } catch (\Throwable $e) {
             Log::error('Error en PlanIntervencionController@indexCompleto: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al cargar planes completos'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al cargar planes completos'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Crear un nuevo plan de intervención con sus evaluaciones y preguntas
-     * → Devuelve el objeto PlanIntervencion creado
      */
     public function store(Request $request)
     {
@@ -83,42 +77,31 @@ class PlanIntervencionController extends Controller
             }
             DB::commit();
             return response()->json($plan->load('evaluaciones.preguntas', 'linea'), Response::HTTP_CREATED);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error en PlanIntervencionController@store: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al crear plan de intervención'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al crear plan de intervención'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Mostrar un plan de intervención por ID
-     * → Devuelve el objeto PlanIntervencion
      */
     public function show($id)
     {
         try {
             $plan = PlanIntervencion::with(['evaluaciones.preguntas', 'linea'])->findOrFail($id);
             return response()->json($plan, Response::HTTP_OK);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Plan no encontrado'
-            ], Response::HTTP_NOT_FOUND);
-
+            return response()->json(['message' => 'Plan no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
             Log::error("Error en PlanIntervencionController@show id={$id}: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al obtener plan de intervención'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al obtener plan de intervención'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Actualizar un plan de intervención
-     * → Devuelve el objeto actualizado
      */
     public function update(Request $request, $id)
     {
@@ -135,44 +118,136 @@ class PlanIntervencionController extends Controller
             $plan->update($request->only('nombre', 'descripcion', 'linea_id'));
             DB::commit();
             return response()->json($plan->load('evaluaciones.preguntas', 'linea'), Response::HTTP_OK);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Plan no encontrado'
-            ], Response::HTTP_NOT_FOUND);
-
+            return response()->json(['message' => 'Plan no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error("Error en PlanIntervencionController@update id={$id}: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al actualizar plan de intervención'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al actualizar plan de intervención'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
     /**
      * Eliminar un plan de intervención
-     * → Devuelve mensaje de confirmación
      */
     public function destroy($id)
     {
         try {
             $plan = PlanIntervencion::findOrFail($id);
             $plan->delete();
-            return response()->json([
-                'message' => 'Plan eliminado correctamente'
-            ], Response::HTTP_OK);
-
+            return response()->json(['message' => 'Plan eliminado correctamente'], Response::HTTP_OK);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Plan no encontrado'
-            ], Response::HTTP_NOT_FOUND);
-
+            return response()->json(['message' => 'Plan no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
             Log::error("Error en PlanIntervencionController@destroy id={$id}: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Error al eliminar plan de intervención'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            return response()->json(['message' => 'Error al eliminar plan de intervención'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * Obtener planes de un territorio específico
+     */
+    public function getPlanPorTerritorio($territorioId)
+    {
+        try {
+            $planes = PlanIntervencion::where('territorio_id', $territorioId)
+                ->with('evaluaciones.preguntas', 'linea')
+                ->get();
+            return response()->json($planes, Response::HTTP_OK);
+        } catch (\Throwable $e) {
+            Log::error("Error en getPlanPorTerritorio {$territorioId}: {$e->getMessage()}");
+            return response()->json(['message' => 'Error al obtener planes por territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Obtener planes por línea de intervención
+     */
+    public function getPlanesPorLinea($lineaId)
+    {
+        try {
+            $planes = PlanIntervencion::where('linea_id', $lineaId)
+                ->with('evaluaciones.preguntas', 'linea')
+                ->get();
+            return response()->json($planes, Response::HTTP_OK);
+        } catch (\Throwable $e) {
+            Log::error("Error en getPlanesPorLinea {$lineaId}: {$e->getMessage()}");
+            return response()->json(['message' => 'Error al obtener planes por línea'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Obtener evaluaciones (con sus preguntas) de un plan específico
+     */
+public function getEvaluacionesConPreguntas($planId)
+{
+    try {
+        Log::info("[PlanIntervencion][getEvaluacionesConPreguntas] planId={$planId}");
+
+        // 1) Cargar plan → evaluaciones (sin ponderaciones) → preguntas con todas sus subrelaciones
+        $plan = PlanIntervencion::with([
+            'evaluaciones' => function($qe) {
+                $qe->doesntHave('ponderaciones')
+                   ->with([
+                       'preguntas' => function($qp) {
+                           $qp->with([
+                               'respuestas.opciones',
+                               'respuestas.opcionesBarraSatisfaccion',
+                               'respuestas.subpreguntas.opcionesLikert',
+                               'tiposDeRespuesta',
+                           ]);
+                       }
+                   ]);
+            }
+        ])->findOrFail($planId);
+
+        // 2) Inyección “SI/NO” donde toque
+        foreach ($plan->evaluaciones as $ev) {
+            Log::info("→ Evaluación ID={$ev->id} nombre=\"{$ev->nombre}\"");
+            foreach ($ev->preguntas as $preg) {
+                $tipo = optional($preg->tiposDeRespuesta->first())->tipo;
+                Log::info("   → Pregunta ID={$preg->id} tipo=\"{$tipo}\"");
+
+                if (in_array($tipo, ['si_no','si_no_noestoyseguro'], true)) {
+                    $opts = [
+                        (object)['id'=>1, 'valor'=>1, 'label'=>'SI'],
+                        (object)['id'=>2, 'valor'=>2, 'label'=>'NO'],
+                    ];
+                    if ($tipo === 'si_no_noestoyseguro') {
+                        $opts[] = (object)['id'=>3, 'valor'=>null, 'label'=>'No estoy seguro'];
+                    }
+
+                    Log::info("      • Inyectando opciones: " . json_encode($opts));
+
+                    $pseudo = (object)[
+                        'opciones'                   => $opts,
+                        'subpreguntas'               => [],
+                        'opciones_barra_satisfaccion'=> [],
+                    ];
+                    // Reemplazo la relación 'respuestas'
+                    $preg->setRelation('respuestas', collect([$pseudo]));
+                }
+            }
+        }
+
+        // 3) Devolver sólo el array de evaluaciones
+        return response()->json([
+            'evaluaciones' => $plan->evaluaciones->values()
+        ], Response::HTTP_OK);
+
+    } catch (ModelNotFoundException $e) {
+        Log::warning("[PlanIntervencion][getEvaluacionesConPreguntas] Plan {$planId} no encontrado.");
+        return response()->json(
+            ['message' => 'Plan de intervención no encontrado.'],
+            Response::HTTP_NOT_FOUND
+        );
+    } catch (\Throwable $e) {
+        Log::error("[PlanIntervencion][getEvaluacionesConPreguntas] {$e->getMessage()}");
+        return response()->json(
+            ['message' => 'Error al obtener evaluaciones.'],
+            Response::HTTP_INTERNAL_SERVER_ERROR
+        );
+    }
+}
+
 }
