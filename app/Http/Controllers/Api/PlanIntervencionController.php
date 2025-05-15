@@ -179,75 +179,89 @@ class PlanIntervencionController extends Controller
     /**
      * Obtener evaluaciones (con sus preguntas) de un plan específico
      */
-public function getEvaluacionesConPreguntas($planId)
-{
-    try {
-        Log::info("[PlanIntervencion][getEvaluacionesConPreguntas] planId={$planId}");
+    public function getEvaluacionesConPreguntas($planId)
+    {
+        try {
+            Log::info("[PlanIntervencion][getEvaluacionesConPreguntas] planId={$planId}");
 
-        // 1) Cargar plan → evaluaciones (sin ponderaciones) → preguntas con todas sus subrelaciones
-        $plan = PlanIntervencion::with([
-            'evaluaciones' => function($qe) {
-                $qe->doesntHave('ponderaciones')
-                   ->with([
-                       'preguntas' => function($qp) {
-                           $qp->with([
-                               'respuestas.opciones',
-                               'respuestas.opcionesBarraSatisfaccion',
-                               'respuestas.subpreguntas.opcionesLikert',
-                               'tiposDeRespuesta',
-                           ]);
-                       }
-                   ]);
-            }
-        ])->findOrFail($planId);
+            // 1) Cargar plan → evaluaciones (sin ponderaciones) → preguntas con sus subrelaciones
+            $plan = PlanIntervencion::with([
+                'evaluaciones' => function($qe) {
+                    $qe->doesntHave('ponderaciones')
+                    ->with([
+                        'preguntas' => function($qp) {
+                            $qp->with([
+                                'respuestas.opciones',
+                                'respuestas.opcionesBarraSatisfaccion',
+                                'respuestas.subpreguntas.opcionesLikert',
+                                'tiposDeRespuesta',
+                            ]);
+                        }
+                    ]);
+                }
+            ])->findOrFail($planId);
 
-        // 2) Inyección “SI/NO” donde toque
-        foreach ($plan->evaluaciones as $ev) {
-            Log::info("→ Evaluación ID={$ev->id} nombre=\"{$ev->nombre}\"");
-            foreach ($ev->preguntas as $preg) {
-                $tipo = optional($preg->tiposDeRespuesta->first())->tipo;
-                Log::info("   → Pregunta ID={$preg->id} tipo=\"{$tipo}\"");
-
-                if (in_array($tipo, ['si_no','si_no_noestoyseguro'], true)) {
-                    $opts = [
-                        (object)['id'=>1, 'valor'=>1, 'label'=>'SI'],
-                        (object)['id'=>2, 'valor'=>2, 'label'=>'NO'],
-                    ];
-                    if ($tipo === 'si_no_noestoyseguro') {
-                        $opts[] = (object)['id'=>3, 'valor'=>null, 'label'=>'No estoy seguro'];
+            // 2) Inyectar “SI/NO” donde corresponda
+            foreach ($plan->evaluaciones as $ev) {
+                foreach ($ev->preguntas as $preg) {
+                    $tipo = optional($preg->tiposDeRespuesta->first())->tipo;
+                    if (in_array($tipo, ['si_no','si_no_noestoyseguro'], true)) {
+                        $opts = [
+                            (object)['id'=>1, 'valor'=>1, 'label'=>'SI'],
+                            (object)['id'=>2, 'valor'=>2, 'label'=>'NO'],
+                        ];
+                        if ($tipo === 'si_no_noestoyseguro') {
+                            $opts[] = (object)['id'=>3, 'valor'=>null, 'label'=>'No estoy seguro'];
+                        }
+                        $pseudo = (object)[
+                            'opciones'                   => $opts,
+                            'subpreguntas'               => [],
+                            'opciones_barra_satisfaccion'=> [],
+                        ];
+                        $preg->setRelation('respuestas', collect([$pseudo]));
                     }
-
-                    Log::info("      • Inyectando opciones: " . json_encode($opts));
-
-                    $pseudo = (object)[
-                        'opciones'                   => $opts,
-                        'subpreguntas'               => [],
-                        'opciones_barra_satisfaccion'=> [],
-                    ];
-                    // Reemplazo la relación 'respuestas'
-                    $preg->setRelation('respuestas', collect([$pseudo]));
                 }
             }
+
+            // 3) Filtrar solo las evaluaciones que estén COMPLETAS AL 100 %:
+            //    para cada evaluación, **todas** sus preguntas deben tener
+            //    al menos una posible opción de respuesta (discreta, barra o likert).
+            $evaluacionesCompletas = $plan->evaluaciones->filter(function($ev) {
+                return $ev->preguntas->every(function($preg) {
+                    if ($preg->respuestas->isEmpty()) {
+                        return false;
+                    }
+                    $resp = $preg->respuestas->first();
+
+                    $hasOpcionesDiscretas = collect($resp->opciones)->isNotEmpty();
+                    $hasBarra             = collect($resp->opciones_barra_satisfaccion)->isNotEmpty();
+                    $hasLikert            = collect($resp->subpreguntas)
+                                            ->pluck('opciones_likert')
+                                            ->flatten()
+                                            ->isNotEmpty();
+
+                    return $hasOpcionesDiscretas || $hasBarra || $hasLikert;
+                });
+            })->values();
+
+            // 4) Devolver solo esas evaluaciones 100 % completas
+            return response()->json([
+                'evaluaciones' => $evaluacionesCompletas
+            ], Response::HTTP_OK);
+
+        } catch (ModelNotFoundException $e) {
+            Log::warning("[PlanIntervencion][getEvaluacionesConPreguntas] Plan {$planId} no encontrado.");
+            return response()->json(
+                ['message' => 'Plan de intervención no encontrado.'],
+                Response::HTTP_NOT_FOUND
+            );
+        } catch (\Throwable $e) {
+            Log::error("[PlanIntervencion][getEvaluacionesConPreguntas] {$e->getMessage()}");
+            return response()->json(
+                ['message' => 'Error al obtener evaluaciones.'],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
-
-        // 3) Devolver sólo el array de evaluaciones
-        return response()->json([
-            'evaluaciones' => $plan->evaluaciones->values()
-        ], Response::HTTP_OK);
-
-    } catch (ModelNotFoundException $e) {
-        Log::warning("[PlanIntervencion][getEvaluacionesConPreguntas] Plan {$planId} no encontrado.");
-        return response()->json(
-            ['message' => 'Plan de intervención no encontrado.'],
-            Response::HTTP_NOT_FOUND
-        );
-    } catch (\Throwable $e) {
-        Log::error("[PlanIntervencion][getEvaluacionesConPreguntas] {$e->getMessage()}");
-        return response()->json(
-            ['message' => 'Error al obtener evaluaciones.'],
-            Response::HTTP_INTERNAL_SERVER_ERROR
-        );
     }
-}
 
 }
