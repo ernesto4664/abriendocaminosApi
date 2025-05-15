@@ -9,42 +9,60 @@ use App\Models\Region;
 use App\Models\Provincia;
 use App\Models\Comuna;
 use App\Models\LineasDeIntervencion;
+use App\Models\PlanIntervencion;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class TerritorioController extends Controller
 {
-    /**
-     * Listar todos los territorios con sus relaciones.
-     * → Devuelve un array puro de territorios formateados
-     */
+
     public function index()
     {
+    
         try {
             $territorios = Territorio::with('linea')->get()->map(function ($t) {
+                 
                 // 1) Obtener los IDs, ya sea string JSON o array
                 $regionIds    = is_string($t->region_id)
-                                 ? json_decode($t->region_id, true)
-                                 : ($t->region_id ?? []);
+                                ? json_decode($t->region_id, true)
+                                : ($t->region_id ?? []);
                 $provinciaIds = is_string($t->provincia_id)
-                                 ? json_decode($t->provincia_id, true)
-                                 : ($t->provincia_id ?? []);
+                                ? json_decode($t->provincia_id, true)
+                                : ($t->provincia_id ?? []);
                 $comunaIds    = is_string($t->comuna_id)
-                                 ? json_decode($t->comuna_id, true)
-                                 : ($t->comuna_id ?? []);
+                                ? json_decode($t->comuna_id, true)
+                                : ($t->comuna_id ?? []);
 
-                // 2) Recuperar los modelos
+                // 2) Recuperar los modelos de ubicación
                 $regiones   = Region::whereIn('id', $regionIds)->get();
                 $provincias = Provincia::whereIn('id', $provinciaIds)->get();
                 $comunas    = Comuna::whereIn('id', $comunaIds)->get();
 
+                // 3) Obtener el ID de línea
+                $lineaId = $t->linea?->id;
+
+                // 4) Buscar el plan de intervención de esa línea
+                $plan = null;
+                if ($lineaId) {
+                    $planModel = PlanIntervencion::where('linea_id', $lineaId)
+                                    ->orderBy('id')
+                                    ->first();
+                    if ($planModel) {
+                        $plan = [
+                            'id'     => $planModel->id,
+                            'nombre' => $planModel->nombre,
+                        ];
+                    }
+                }
+
+                // 5) Devolver todo, añadiendo 'plan_intervencion'
                 return [
                     'id'                => $t->id,
                     'nombre_territorio' => $t->nombre_territorio,
                     'cod_territorio'    => $t->cod_territorio,
                     'linea'             => $t->linea
-                                             ? ['id' => $t->linea->id, 'nombre' => $t->linea->nombre]
-                                             : null,
+                                            ? ['id' => $t->linea->id, 'nombre' => $t->linea->nombre]
+                                            : null,
                     'regiones'          => $regiones,
                     'provincias'        => $provincias,
                     'comunas'           => $comunas,
@@ -58,6 +76,8 @@ class TerritorioController extends Controller
                         'cuota_2' => $t->cuota_2,
                         'total'   => $t->total,
                     ],
+                    // bloque de plan de intervención
+                    'plan_intervencion' => $plan,
                 ];
             });
 
@@ -73,42 +93,72 @@ class TerritorioController extends Controller
     }
 
     /**
-     * Mostrar un territorio por ID.
-     * → Devuelve un objeto territorio formateado
+     * Mostrar un territorio en detalle, incluyendo su plan de intervención.
      */
     public function show($id)
     {
         try {
+            // 1) Buscamos el territorio (con su línea)
             $t = Territorio::with('linea')->findOrFail($id);
-            $data = [
-                'id'         => $t->id,
-                'nombre'     => $t->nombre_territorio,
-                'linea'      => $t->linea?->nombre ?? 'Sin asignar',
-                'regiones'   => $t->regiones,
-                'provincias' => $t->provincias,
-                'comunas'    => $t->comunas,
-                'plazas'     => $t->plazas,
-                'cuotas'     => [
+            // 2) Decodificamos JSON de regiones/provincias/comunas
+            $regionIds    = is_string($t->region_id)    ? json_decode($t->region_id, true)    : ($t->region_id ?? []);
+            $provinciaIds = is_string($t->provincia_id) ? json_decode($t->provincia_id, true) : ($t->provincia_id ?? []);
+            $comunaIds    = is_string($t->comuna_id)    ? json_decode($t->comuna_id, true)    : ($t->comuna_id ?? []);
+
+            $regiones   = Region::whereIn('id', $regionIds)->get();
+            $provincias = Provincia::whereIn('id', $provinciaIds)->get();
+            $comunas    = Comuna::whereIn('id', $comunaIds)->get();
+
+            // 3) Calcular el plan de intervención
+            $plan = null;
+            if ($t->linea) {
+                Log::info("[Territorio][show] Buscando plan para linea_id={$t->linea->id}");
+                $planModel = PlanIntervencion::where('linea_id', $t->linea->id)
+                                ->orderBy('id')
+                                ->first();
+                if ($planModel) {
+                    $plan = [
+                        'id'     => $planModel->id,
+                        'nombre' => $planModel->nombre,
+                    ];
+                }
+            }
+
+            // 4) Armamos el payload completo
+            $payload = [
+                'id'                => $t->id,
+                'nombre_territorio' => $t->nombre_territorio,
+                'cod_territorio'    => $t->cod_territorio,
+                'linea'             => $t->linea
+                                        ? ['id' => $t->linea->id, 'nombre' => $t->linea->nombre]
+                                        : null,
+                'regiones'          => $regiones,
+                'provincias'        => $provincias,
+                'comunas'           => $comunas,
+                'region_nombres'    => $regiones->pluck('nombre')->join(', '),
+                'provincia_nombres' => $provincias->pluck('nombre')->join(', '),
+                'comuna_nombres'    => $comunas->pluck('nombre')->join(', '),
+                'plazas'            => $t->plazas,
+                'cuotas'            => [
                     'cuota_1' => $t->cuota_1,
                     'cuota_2' => $t->cuota_2,
                     'total'   => $t->total,
                 ],
+                // bloque de plan de intervención
+                'plan_intervencion' => $plan,
             ];
 
-            return response()->json($data, Response::HTTP_OK);
+            return response()->json($payload, Response::HTTP_OK);
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'Territorio no encontrado'], Response::HTTP_NOT_FOUND);
         } catch (\Throwable $e) {
-            Log::error('[Territorio][show] ' . $e->getMessage());
-            return response()->json(['message' => 'Error al obtener territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
+            Log::error("[Territorio][show] " . $e->getMessage());
+            return response()->json(
+                ['message' => 'Territorio no encontrado o error interno'],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
     }
 
-    /**
-     * Crear un nuevo territorio.
-     * → Devuelve el objeto creado
-     */
     public function store(Request $request)
     {
         $request->validate([
