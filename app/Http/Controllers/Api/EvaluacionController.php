@@ -4,6 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Evaluacion;
+use App\Models\Pregunta;
+use App\Models\Respuesta;
+use App\Models\RespuestaOpcion;
+use App\Models\RespuestaTipo;
+use App\Models\RespuestaSubpregunta;
+use App\Models\OpcionLikert;
+use App\Models\OpcionBarraSatisfaccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +25,42 @@ class EvaluacionController extends Controller
     public function index()
     {
         try {
-            $evaluaciones = Evaluacion::with('preguntas')->get();
+            $evaluaciones = Evaluacion::with([
+                    'preguntas.respuestas.opciones',
+                    'preguntas.respuestas.subpreguntas.opcionesLikert',
+                    'preguntas.respuestas.opcionesBarraSatisfaccion',
+                    'preguntas.tiposDeRespuesta',
+                ])
+                ->get()
+                ->filter(function ($evaluacion) {
+                    return $evaluacion->preguntas->every(function ($pregunta) {
+                        $respuesta = $pregunta->respuestas->first();
+                        $tipo = $pregunta->tiposDeRespuesta->first()?->tipo;
+
+                        if (!$respuesta) {
+                            return false;
+                        }
+
+                        // Si tiene opciones, barra o subpreguntas, es válida
+                        if (
+                            $respuesta->opciones->isNotEmpty() ||
+                            $respuesta->subpreguntas->isNotEmpty() ||
+                            $respuesta->opcionesBarraSatisfaccion->isNotEmpty()
+                        ) {
+                            return true;
+                        }
+
+                        // Si es tipo texto o número, basta con que exista la respuesta
+                        if (in_array($tipo, ['texto', 'numero'])) {
+                            return true;
+                        }
+
+                        // En cualquier otro caso, es incompleta
+                        return false;
+                    });
+                })
+                ->values(); // Resetear índices después del filter
+
             return response()->json($evaluaciones, Response::HTTP_OK);
 
         } catch (\Throwable $e) {

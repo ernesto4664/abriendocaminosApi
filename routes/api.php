@@ -54,9 +54,10 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('planes-completo', [PlanIntervencionController::class, 'indexCompleto']);
     
     // 📌 Rutas para Evaluaciones
-    Route::get('/evaluaciones', [EvaluacionController::class, 'index']);  
+    Route::get('/evaluaciones', [EvaluacionController::class, 'index']); 
+    Route::get('/evaluaciones/{id}', [EvaluacionController::class, 'show']); 
     Route::post('/evaluaciones', [EvaluacionController::class, 'store']);
-    Route::get('/evaluaciones/{id}', [EvaluacionController::class, 'show']);
+    
     Route::put('/evaluaciones/{id}', [EvaluacionController::class, 'update']);
     Route::delete('/evaluaciones/{id}', [EvaluacionController::class, 'destroy']);
     Route::get('/planes/{planId}/evaluaciones-sin-respuestas', [EvaluacionController::class, 'getEvaluacionesSinRespuestas']);
@@ -74,7 +75,11 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('/respuestas/{id}', [RespuestaController::class, 'show']);
     Route::put('/respuestas/{id}', [RespuestaController::class, 'update']);
     Route::delete('/respuestas/{id}', [RespuestaController::class, 'destroy']);
-    
+
+    Route::delete('respuestas/pregunta/{preguntaId}', [RespuestaController::class, 'destroyPorPregunta']);
+
+    Route::delete('respuestas/pregunta/{preguntaId}/evaluacion/{evaluacionId}', [RespuestaController::class, 'limpiarPreguntaCompleta']);
+
     Route::put('/respuestas-multiple', [RespuestaController::class, 'updateMultiple']);
 
     Route::get(
@@ -98,8 +103,19 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
 
     // 📌 Rutas para Ponderaciones
 
-    Route::post('ponderaciones', [PonderacionController::class, 'store']);
-    Route::get('ponderaciones/completo', [PonderacionController::class, 'completo']);
+    Route::post('/ponderaciones', [PonderacionController::class, 'store']);
+    Route::get('/ponderaciones/completo', [PonderacionController::class, 'completo']);
+    Route::get  ('/ponderaciones/{id}/completo', [PonderacionController::class, 'completoPorId']);
+    Route::put  ('/ponderaciones/{id}',          [PonderacionController::class, 'update']);
+
+        Route::get('ponderaciones/existe-detalle/{preguntaId}', 
+        [PonderacionController::class, 'existeDetallePorPregunta']
+    );
+
+    Route::delete('ponderaciones/detalle/{detalleId}', [PonderacionController::class,'destroyDetalle']);
+
+    Route::delete('/ponderaciones/{evaluacionId}', [PonderacionController::class, 'destroy']);
+
 });
 
 

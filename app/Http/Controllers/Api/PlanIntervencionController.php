@@ -6,6 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\PlanIntervencion;
 use App\Models\Pregunta;
 use App\Models\Respuesta;
+use App\Models\Evaluacion;
+use App\Models\RespuestaOpcion;
+use App\Models\RespuestaTipo;
+use App\Models\RespuestaSubpregunta;
+use App\Models\OpcionLikert;
+use App\Models\OpcionBarraSatisfaccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -184,24 +190,25 @@ class PlanIntervencionController extends Controller
         try {
             Log::info("[PlanIntervencion][getEvaluacionesConPreguntas] Inicio, planId={$planId}");
 
-            // 1) Cargar plan → evaluaciones (sin ponderaciones) → preguntas con subrelaciones
+            // 1) Cargar plan con evaluaciones sin ponderaciones + relaciones necesarias
             $plan = PlanIntervencion::with([
-                'evaluaciones' => function($qe) {
+                'evaluaciones' => function ($qe) {
                     $qe->doesntHave('ponderaciones')
-                    ->with([
-                        'preguntas.respuestas.opciones',
-                        'preguntas.respuestas.opcionesBarraSatisfaccion',
-                        'preguntas.respuestas.subpreguntas.opcionesLikert',
-                        'preguntas.tiposDeRespuesta',
-                    ]);
+                        ->with([
+                            'preguntas.respuestas.opciones',
+                            'preguntas.respuestas.opcionesBarraSatisfaccion',
+                            'preguntas.respuestas.subpreguntas.opcionesLikert',
+                            'preguntas.tiposDeRespuesta',
+                        ]);
                 }
             ])->findOrFail($planId);
 
-            // 2) Inyectar “SI/NO” en preguntas que lo requieran
+            // 2) Inyectar opciones falsas según el tipo de pregunta
             foreach ($plan->evaluaciones as $ev) {
                 foreach ($ev->preguntas as $preg) {
                     $tipo = optional($preg->tiposDeRespuesta->first())->tipo;
 
+                    // Inyección de respuestas tipo SI/NO
                     if (in_array($tipo, ['si_no', 'si_no_noestoyseguro'], true)) {
                         Log::info("[PlanIntervencion] Inyectando SI/NO en pregunta ID={$preg->id} tipo={$tipo}");
 
@@ -213,31 +220,40 @@ class PlanIntervencionController extends Controller
                             $opts[] = (object)['id' => 3, 'valor' => null, 'label' => 'No estoy seguro'];
                         }
 
-                        $pseudo = (object)[
+                        $pseudoRespuesta = (object)[
                             'opciones'                    => $opts,
                             'subpreguntas'                => [],
                             'opciones_barra_satisfaccion' => [],
                         ];
 
-                        $preg->setRelation('respuestas', collect([$pseudo]));
+                        $preg->setRelation('respuestas', collect([$pseudoRespuesta]));
+                    }
+
+                    // Inyección para tipo texto o número (para que el frontend no lo descarte)
+                    if (in_array($tipo, ['texto', 'numero'], true)) {
+                        $pseudoRespuesta = (object)[
+                            'opciones'                    => [],
+                            'subpreguntas'                => [],
+                            'opciones_barra_satisfaccion' => [],
+                            'respuesta'                   => '', // se puede usar para representar respuesta vacía
+                        ];
+
+                        $preg->setRelation('respuestas', collect([$pseudoRespuesta]));
                     }
                 }
             }
 
-            // 3) Filtrar sólo evaluaciones completísimas (100%)
-            $evaluacionesCompletas = $plan->evaluaciones->filter(function($ev) {
-                return $ev->preguntas->every(function($preg) {
-                    // Asegurarnos de tener siempre una Collection
+            // 3) Filtrar solo evaluaciones completas
+            $evaluacionesCompletas = $plan->evaluaciones->filter(function ($ev) {
+                return $ev->preguntas->every(function ($preg) {
                     $resps = $preg->getRelation('respuestas') instanceof \Illuminate\Support\Collection
-                            ? $preg->respuestas
-                            : collect($preg->respuestas);
+                        ? $preg->respuestas
+                        : collect($preg->respuestas);
 
-                    // Si no hay ninguna “respuesta” → no está completo
                     if ($resps->isEmpty()) {
                         return false;
                     }
 
-                    // Tomamos la primera respuesta disponible (ya sea real o injertada)
                     $first = $resps->first();
                     if (! $first) {
                         return false;
@@ -245,18 +261,21 @@ class PlanIntervencionController extends Controller
 
                     $opc    = collect($first->opciones ?? []);
                     $barra  = collect($first->opciones_barra_satisfaccion ?? []);
-                    $likert = collect($first->subpreguntas ?? [])
-                                ->pluck('opciones_likert')
-                                ->flatten();
+                    $likert = collect($first->subpreguntas ?? [])->pluck('opciones_likert')->flatten();
+                    $tipo   = optional($preg->tiposDeRespuesta->first())->tipo;
 
-                    // Debe tener al menos UNA de estas tres fuentes de opción
+                    // Aceptar tipo texto o número con solo existencia de respuesta
+                    if (in_array($tipo, ['texto', 'numero'])) {
+                        return true;
+                    }
+
                     return $opc->isNotEmpty() || $barra->isNotEmpty() || $likert->isNotEmpty();
                 });
             })->values();
 
             Log::info("[PlanIntervencion][getEvaluacionesConPreguntas] Evaluaciones válidas encontradas: {$evaluacionesCompletas->count()}");
 
-            // 4) Devolverlas
+            // 4) Retornar
             return response()->json([
                 'evaluaciones' => $evaluacionesCompletas
             ], Response::HTTP_OK);
@@ -275,5 +294,6 @@ class PlanIntervencionController extends Controller
             );
         }
     }
+
 
 }

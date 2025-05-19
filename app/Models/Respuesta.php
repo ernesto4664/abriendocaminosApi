@@ -86,4 +86,9 @@ class Respuesta extends Model
     {
         return $this->hasMany(RespuestaSubpregunta::class, 'respuesta_id');
     }
+
+        public function tipoRespuesta()
+    {
+        return $this->hasOne(RespuestaTipo::class, 'pregunta_id', 'pregunta_id');
+    }
 }

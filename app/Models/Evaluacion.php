@@ -25,5 +25,10 @@ class Evaluacion extends Model {
         // asumo que Ponderacion tiene evaluacion_id
         return $this->hasMany(\App\Models\Ponderacion::class, 'evaluacion_id');
     }
+
+        public function respuestas()
+    {
+        return $this->hasMany(Respuesta::class, 'evaluacion_id');
+    }
 }
 
