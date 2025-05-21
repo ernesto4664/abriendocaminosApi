@@ -211,6 +211,26 @@ public function updateMultiple(Request $request)
                 }
             }
 
+            // 👇 Opciones inyectadas automáticamente si no vienen del front
+                elseif (in_array($d['tipo'], ['si_no', 'si_no_noestoyseguro'])) {
+                    $defaultOpciones = [
+                        ['label' => 'Sí'],
+                        ['label' => 'No'],
+                    ];
+
+                    if ($d['tipo'] === 'si_no_noestoyseguro') {
+                        $defaultOpciones[] = ['label' => 'No estoy seguro'];
+                    }
+
+                    foreach ($defaultOpciones as $opt) {
+                        RespuestaOpcion::create([
+                            'respuesta_id' => $resp->id,
+                            'label'        => $opt['label'],
+                            'valor'        => null,
+                        ]);
+                    }
+                }
+
             // 4) Si es barra de satisfacción, grabamos el valor
             if ($d['tipo'] === 'barra_satisfaccion') {
                 OpcionBarraSatisfaccion::create([
@@ -404,62 +424,102 @@ public function getEvaluacionCompleta($evaluacionId)
     {
         DB::beginTransaction();
         try {
-            // IDs de respuestas (si acaso hubiera)
+            // 0️⃣ Buscar IDs de respuestas
             $respuestaIds = Respuesta::where('pregunta_id', $preguntaId)->pluck('id');
+            Log::info("[destroyPorPregunta] Respuesta IDs para pregunta $preguntaId: " . json_encode($respuestaIds));
 
-            // 1) Opciones genéricas (tu modelo RespuestaOpcion)
+            // 1️⃣ Eliminar opciones genéricas (opciones personalizadas, si aplica)
             RespuestaOpcion::whereIn('respuesta_id', $respuestaIds)->delete();
+            Log::info("[destroyPorPregunta] Opciones genéricas eliminadas.");
 
-            // 2) Barra de satisfacción
+            // 2️⃣ Eliminar barra de satisfacción
             OpcionBarraSatisfaccion::whereIn('respuesta_id', $respuestaIds)->delete();
+            Log::info("[destroyPorPregunta] Opciones barra satisfacción eliminadas.");
 
-            // 3) Likert: primero sus subpreguntas…
+            // 3️⃣ Eliminar subpreguntas y sus opciones Likert
             $subIds = RespuestaSubpregunta::whereIn('respuesta_id', $respuestaIds)->pluck('id');
             OpcionLikert::whereIn('subpregunta_id', $subIds)->delete();
             RespuestaSubpregunta::whereIn('id', $subIds)->delete();
+            Log::info("[destroyPorPregunta] Subpreguntas y opciones Likert eliminadas.");
 
-            // 4) Tipo de respuesta
+            // 4️⃣ Eliminar tipo de respuesta
             RespuestaTipo::where('pregunta_id', $preguntaId)->delete();
+            Log::info("[destroyPorPregunta] Tipos de respuesta eliminados.");
 
-            // 5) Finalmente, las respuestas
+            // 5️⃣ Eliminar las respuestas
             $count = Respuesta::where('pregunta_id', $preguntaId)->delete();
+            Log::info("[destroyPorPregunta] Respuestas eliminadas: $count");
 
             DB::commit();
             return response()->json([
-                'message' => "Eliminadas opciones y $count respuestas."
+                'message' => "✅ Eliminadas opciones y $count respuestas."
             ], Response::HTTP_OK);
+
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Falló la limpieza'], 500);
+            Log::error("[destroyPorPregunta] ERROR: " . $e->getMessage());
+            return response()->json(['error' => '❌ Falló la limpieza'], 500);
         }
     }
 
-    public function limpiarPreguntaCompleta($preguntaId, $evaluacionId)
+    public function limpiarPreguntaCompleta($preguntaId, $evaluacionId, Request $request)
     {
         DB::beginTransaction();
 
         try {
-            // 1) Borrar detalles de Ponderación para ESTA pregunta
-            DetallePonderacion::where(compact('preguntaId'))
-                ->whereHas('cabecera', fn($q) => $q->where('evaluacion_id', $evaluacionId))
-                ->delete();
+            // 🧹 Primero eliminamos las respuestas y sus relaciones
+            $this->destroyPorPregunta($preguntaId);
 
-            // 2) (Opcional) Si una cabecera no tiene más detalles, la borras:
+            // 🧹 También eliminamos el tipo de respuesta (registro previo)
+            \App\Models\TipoDeRespuesta::where('pregunta_id', $preguntaId)->delete();
+
+            // ✅ Si viene el nuevo tipo, actualizamos ponderaciones
+            if ($request->has('tipo')) {
+                Log::info("[limpiarPreguntaCompleta] Actualizando tipo a '{$request->tipo}' para pregunta_id={$preguntaId} y evaluacion_id={$evaluacionId}");
+                $this->actualizarTipoYLimpiarDetallePonderaciones($preguntaId, $evaluacionId, $request->tipo);
+            }
+
+            // 🧼 Verificamos si ya no quedan detalles → eliminamos la cabecera
             Ponderacion::where('evaluacion_id', $evaluacionId)
                 ->doesntHave('detalles')
                 ->delete();
 
-            // 3) Borrar respuestas y dependencias
-            // reutilizas tu método destroyPorPregunta internamente:
-            app(RespuestaController::class)->destroyPorPregunta($preguntaId);
-
             DB::commit();
-            return response()->json(['message' => 'Limpieza completa exitosa.'], Response::HTTP_OK);
-
+            return response()->json(['message' => '✅ Pregunta y ponderaciones limpiadas correctamente.']);
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('[Respuesta][limpiarPreguntaCompleta] '.$e->getMessage());
-            return response()->json(['error'=>'No se pudo limpiar la pregunta'], 500);
+            Log::error('[Respuesta][limpiarPreguntaCompleta] Error: '.$e->getMessage());
+            return response()->json(['error' => '❌ No se pudo limpiar la pregunta.'], 500);
         }
     }
+
+    private function actualizarTipoYLimpiarDetallePonderaciones(int $preguntaId, int $evaluacionId, string $tipo): void
+    {
+        // Opcional: valida que el tipo sea válido
+        $tiposValidos = [
+            'texto', 'numero', 'barra_satisfaccion', '5emojis',
+            'si_no', 'si_no_noestoyseguro', 'likert',
+            'opcion', 'opcion_personalizada'
+        ];
+
+        if (!in_array($tipo, $tiposValidos)) {
+            Log::warning("[Ponderaciones][actualizarTipoYLimpiar] Tipo inválido recibido: {$tipo}");
+            return;
+        }
+
+        $count = \App\Models\DetallePonderacion::where('pregunta_id', $preguntaId)
+            ->whereIn('ponderacion_id', function ($sub) use ($evaluacionId) {
+                $sub->select('id')
+                    ->from('ponderaciones')
+                    ->where('evaluacion_id', $evaluacionId);
+            })
+            ->update([
+                'tipo' => $tipo,
+                'respuesta_correcta_id' => null,
+                'valor' => null,
+            ]);
+
+        Log::info("[Ponderaciones][actualizarTipoYLimpiar] tipo={$tipo} actualizado en {$count} filas para pregunta_id={$preguntaId} y evaluacion_id={$evaluacionId}");
+    }
+
 }

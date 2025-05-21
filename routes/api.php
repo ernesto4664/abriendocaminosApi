@@ -78,7 +78,7 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
 
     Route::delete('respuestas/pregunta/{preguntaId}', [RespuestaController::class, 'destroyPorPregunta']);
 
-    Route::delete('respuestas/pregunta/{preguntaId}/evaluacion/{evaluacionId}', [RespuestaController::class, 'limpiarPreguntaCompleta']);
+    Route::post('/respuestas/pregunta/{preguntaId}/evaluacion/{evaluacionId}/limpiar', [RespuestaController::class, 'limpiarPreguntaCompleta']);
 
     Route::put('/respuestas-multiple', [RespuestaController::class, 'updateMultiple']);
 
