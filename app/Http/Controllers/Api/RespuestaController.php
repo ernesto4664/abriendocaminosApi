@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Respuesta;
 use App\Models\RespuestaOpcion;
 use App\Models\DetallePonderacion;
+use App\Models\Ponderacion;
 use App\Models\OpcionBarraSatisfaccion;
 use App\Models\RespuestaSubpregunta;
 use App\Models\RespuestaOpcionGlobal;
@@ -250,6 +251,8 @@ public function updateMultiple(Request $request)
 
             // 7️⃣ Si es tipo likert
             if ($d['tipo'] === 'likert' && !empty($d['subpreguntas'])) {
+                $ponderacionId = Ponderacion::where('evaluacion_id', $request->evaluacion_id)->first()?->id;
+
                 foreach ($d['subpreguntas'] as $sp) {
                     $sub = RespuestaSubpregunta::create([
                         'respuesta_id' => $resp->id,
@@ -261,6 +264,20 @@ public function updateMultiple(Request $request)
                             'subpregunta_id' => $sub->id,
                             'respuesta_id'   => $resp->id,
                             'label'          => $opLik['label'],
+                        ]);
+                    }
+
+                    // 🔥 Asociar subpregunta a detalle_ponderaciones
+                    if ($ponderacionId) {
+                        DetallePonderacion::updateOrCreate([
+                            'ponderacion_id' => $ponderacionId,
+                            'pregunta_id'    => $d['pregunta_id'],
+                            'subpregunta_id' => $sub->id,
+                        ], [
+                            'tipo'                  => 'likert',
+                            'respuesta_correcta'   => null,
+                            'respuesta_correcta_id'=> null,
+                            'valor'                => $sp['valor'] ?? 5.0,
                         ]);
                     }
                 }
@@ -278,6 +295,7 @@ public function updateMultiple(Request $request)
         ], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 }
+
 
 public function getEvaluacionCompleta($evaluacionId)
 {
