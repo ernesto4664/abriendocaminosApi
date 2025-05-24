@@ -22,9 +22,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class RespuestaController extends Controller
 {
-    /**
-     * Obtener todas las evaluaciones con sus preguntas y respuestas
-     */
     public function index()
     {
         try {
@@ -45,12 +42,10 @@ class RespuestaController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-    // Dentro de RespuestaController
 
     public function store(Request $request)
     {
-        Log::info('[Respuesta][store] Recibiendo datos', $request->all());
-
+       
         $request->validate([
             'evaluacion_id'            => 'required|exists:evaluaciones,id',
             'respuestas'               => 'required|array|min:1',
@@ -138,253 +133,247 @@ class RespuestaController extends Controller
     }
 
 
-public function updateMultiple(Request $request)
-{
-    Log::info('📥 [UPDATE MULTIPLE] Datos recibidos:', $request->all());
+    public function updateMultiple(Request $request)
+    {
+        $request->validate([
+            'evaluacion_id'               => 'required|exists:evaluaciones,id',
+            'respuestas'                  => 'required|array|min:1',
+            'respuestas.*.pregunta_id'    => 'required|exists:preguntas,id',
+            'respuestas.*.tipo'           => ['required', Rule::in([
+                'texto','numero','barra_satisfaccion','5emojis',
+                'si_no','si_no_noestoyseguro','likert','opcion_personalizada'
+            ])],
+            'respuestas.*.observaciones'  => 'nullable|string',
+            'respuestas.*.respuesta'      => 'nullable|string',
+            'respuestas.*.opciones'       => 'nullable|array',
+            'respuestas.*.opciones.*.label' => 'required_with:respuestas.*.opciones|string',
+            'respuestas.*.opciones.*.valor' => 'nullable|string',
+            'respuestas.*.subpreguntas'   => 'nullable|array',
+        ]);
 
-    $request->validate([
-        'evaluacion_id'               => 'required|exists:evaluaciones,id',
-        'respuestas'                  => 'required|array|min:1',
-        'respuestas.*.pregunta_id'    => 'required|exists:preguntas,id',
-        'respuestas.*.tipo'           => ['required', Rule::in([
-            'texto','numero','barra_satisfaccion','5emojis',
-            'si_no','si_no_noestoyseguro','likert','opcion_personalizada'
-        ])],
-        'respuestas.*.observaciones'  => 'nullable|string',
-        'respuestas.*.respuesta'      => 'nullable|string',
-        'respuestas.*.opciones'       => 'nullable|array',
-        'respuestas.*.opciones.*.label' => 'required_with:respuestas.*.opciones|string',
-        'respuestas.*.opciones.*.valor' => 'nullable|string',
-        'respuestas.*.subpreguntas'   => 'nullable|array',
-    ]);
+        DB::beginTransaction();
 
-    DB::beginTransaction();
+        try {
+            foreach ($request->respuestas as $d) {
+                // 1️⃣ Eliminar respuestas anteriores y sus dependencias
+                $viejas = Respuesta::where('evaluacion_id', $request->evaluacion_id)
+                    ->where('pregunta_id', $d['pregunta_id'])
+                    ->get();
 
-    try {
-        foreach ($request->respuestas as $d) {
-            // 1️⃣ Eliminar respuestas anteriores y sus dependencias
-            $viejas = Respuesta::where('evaluacion_id', $request->evaluacion_id)
-                ->where('pregunta_id', $d['pregunta_id'])
-                ->get();
+                foreach ($viejas as $old) {
+                    RespuestaOpcion::where('respuesta_id', $old->id)->delete();
+                    OpcionBarraSatisfaccion::where('respuesta_id', $old->id)->delete();
 
-            foreach ($viejas as $old) {
-                RespuestaOpcion::where('respuesta_id', $old->id)->delete();
-                OpcionBarraSatisfaccion::where('respuesta_id', $old->id)->delete();
+                    RespuestaSubpregunta::where('respuesta_id', $old->id)
+                        ->each(function ($sp) {
+                            OpcionLikert::where('subpregunta_id', $sp->id)->delete();
+                            $sp->delete();
+                        });
 
-                RespuestaSubpregunta::where('respuesta_id', $old->id)
-                    ->each(function ($sp) {
-                        OpcionLikert::where('subpregunta_id', $sp->id)->delete();
-                        $sp->delete();
-                    });
-
-                $old->delete();
-            }
-
-            // 2️⃣ Verificar y actualizar el tipo en detalle_ponderaciones si cambió
-            $detalle = DetallePonderacion::where('pregunta_id', $d['pregunta_id'])
-                ->whereIn('ponderacion_id', function ($sub) use ($request) {
-                    $sub->select('id')
-                        ->from('ponderaciones')
-                        ->where('evaluacion_id', $request->evaluacion_id);
-                })
-                ->first();
-
-            if ($detalle && $detalle->tipo !== $d['tipo']) {
-                $this->actualizarTipoYLimpiarDetallePonderaciones(
-                    $d['pregunta_id'],
-                    $request->evaluacion_id,
-                    $d['tipo']
-                );
-            }
-
-            // 3️⃣ Eliminar tipo anterior
-            RespuestaTipo::where('pregunta_id', $d['pregunta_id'])->delete();
-
-            // 4️⃣ Crear nueva respuesta
-            $resp = Respuesta::create([
-                'evaluacion_id' => $request->evaluacion_id,
-                'pregunta_id'   => $d['pregunta_id'],
-                'respuesta'     => in_array($d['tipo'], ['texto', 'numero']) ? ($d['respuesta'] ?? '') : null,
-                'observaciones' => $d['observaciones'] ?? null,
-            ]);
-
-            RespuestaTipo::create([
-                'pregunta_id' => $d['pregunta_id'],
-                'tipo'        => $d['tipo'],
-            ]);
-
-            // 5️⃣ Crear opciones
-            if (!empty($d['opciones'])) {
-                foreach ($d['opciones'] as $opt) {
-                    RespuestaOpcion::create([
-                        'respuesta_id' => $resp->id,
-                        'label'        => $opt['label'],
-                        'valor'        => $opt['valor'] ?? null,
-                    ]);
-                }
-            } elseif (in_array($d['tipo'], ['si_no', 'si_no_noestoyseguro'])) {
-                $defaultOpciones = [
-                    ['label' => 'Sí'],
-                    ['label' => 'No'],
-                ];
-
-                if ($d['tipo'] === 'si_no_noestoyseguro') {
-                    $defaultOpciones[] = ['label' => 'No estoy seguro'];
+                    $old->delete();
                 }
 
-                foreach ($defaultOpciones as $opt) {
-                    RespuestaOpcion::create([
-                        'respuesta_id' => $resp->id,
-                        'label'        => $opt['label'],
-                        'valor'        => null,
-                    ]);
-                }
-            }
+                // 2️⃣ Verificar y actualizar el tipo en detalle_ponderaciones si cambió
+                $detalle = DetallePonderacion::where('pregunta_id', $d['pregunta_id'])
+                    ->whereIn('ponderacion_id', function ($sub) use ($request) {
+                        $sub->select('id')
+                            ->from('ponderaciones')
+                            ->where('evaluacion_id', $request->evaluacion_id);
+                    })
+                    ->first();
 
-            // 6️⃣ Si es barra de satisfacción
-            if ($d['tipo'] === 'barra_satisfaccion') {
-                OpcionBarraSatisfaccion::create([
-                    'respuesta_id' => $resp->id,
-                    'valor'        => $d['respuesta'] ?? 0,
+                if ($detalle && $detalle->tipo !== $d['tipo']) {
+                    $this->actualizarTipoYLimpiarDetallePonderaciones(
+                        $d['pregunta_id'],
+                        $request->evaluacion_id,
+                        $d['tipo']
+                    );
+                }
+
+                // 3️⃣ Eliminar tipo anterior
+                RespuestaTipo::where('pregunta_id', $d['pregunta_id'])->delete();
+
+                // 4️⃣ Crear nueva respuesta
+                $resp = Respuesta::create([
+                    'evaluacion_id' => $request->evaluacion_id,
+                    'pregunta_id'   => $d['pregunta_id'],
+                    'respuesta'     => in_array($d['tipo'], ['texto', 'numero']) ? ($d['respuesta'] ?? '') : null,
+                    'observaciones' => $d['observaciones'] ?? null,
                 ]);
-            }
 
-            // 7️⃣ Si es tipo likert
-            if ($d['tipo'] === 'likert' && !empty($d['subpreguntas'])) {
-                $ponderacionId = Ponderacion::where('evaluacion_id', $request->evaluacion_id)->first()?->id;
+                RespuestaTipo::create([
+                    'pregunta_id' => $d['pregunta_id'],
+                    'tipo'        => $d['tipo'],
+                ]);
 
-                foreach ($d['subpreguntas'] as $sp) {
-                    $sub = RespuestaSubpregunta::create([
+                // 5️⃣ Crear opciones
+                if (!empty($d['opciones'])) {
+                    foreach ($d['opciones'] as $opt) {
+                        RespuestaOpcion::create([
+                            'respuesta_id' => $resp->id,
+                            'label'        => $opt['label'],
+                            'valor'        => $opt['valor'] ?? null,
+                        ]);
+                    }
+                } elseif (in_array($d['tipo'], ['si_no', 'si_no_noestoyseguro'])) {
+                    $defaultOpciones = [
+                        ['label' => 'Sí'],
+                        ['label' => 'No'],
+                    ];
+
+                    if ($d['tipo'] === 'si_no_noestoyseguro') {
+                        $defaultOpciones[] = ['label' => 'No estoy seguro'];
+                    }
+
+                    foreach ($defaultOpciones as $opt) {
+                        RespuestaOpcion::create([
+                            'respuesta_id' => $resp->id,
+                            'label'        => $opt['label'],
+                            'valor'        => null,
+                        ]);
+                    }
+                }
+
+                // 6️⃣ Si es barra de satisfacción
+                if ($d['tipo'] === 'barra_satisfaccion') {
+                    OpcionBarraSatisfaccion::create([
                         'respuesta_id' => $resp->id,
-                        'texto'        => $sp['texto'],
+                        'valor'        => $d['respuesta'] ?? 0,
                     ]);
+                }
 
-                    foreach ($sp['opciones'] as $opLik) {
-                        OpcionLikert::create([
-                            'subpregunta_id' => $sub->id,
-                            'respuesta_id'   => $resp->id,
-                            'label'          => $opLik['label'],
-                        ]);
-                    }
+                // 7️⃣ Si es tipo likert
+                if ($d['tipo'] === 'likert' && !empty($d['subpreguntas'])) {
+                    $ponderacionId = Ponderacion::where('evaluacion_id', $request->evaluacion_id)->first()?->id;
 
-                    // 🔥 Asociar subpregunta a detalle_ponderaciones
-                    if ($ponderacionId) {
-                        DetallePonderacion::updateOrCreate([
-                            'ponderacion_id' => $ponderacionId,
-                            'pregunta_id'    => $d['pregunta_id'],
-                            'subpregunta_id' => $sub->id,
-                        ], [
-                            'tipo'                  => 'likert',
-                            'respuesta_correcta'   => null,
-                            'respuesta_correcta_id'=> null,
-                            'valor'                => $sp['valor'] ?? 5.0,
+                    foreach ($d['subpreguntas'] as $sp) {
+                        $sub = RespuestaSubpregunta::create([
+                            'respuesta_id' => $resp->id,
+                            'texto'        => $sp['texto'],
                         ]);
+
+                        foreach ($sp['opciones'] as $opLik) {
+                            OpcionLikert::create([
+                                'subpregunta_id' => $sub->id,
+                                'respuesta_id'   => $resp->id,
+                                'label'          => $opLik['label'],
+                            ]);
+                        }
+
+                        // 🔥 Asociar subpregunta a detalle_ponderaciones
+                        if ($ponderacionId) {
+                            DetallePonderacion::updateOrCreate([
+                                'ponderacion_id' => $ponderacionId,
+                                'pregunta_id'    => $d['pregunta_id'],
+                                'subpregunta_id' => $sub->id,
+                            ], [
+                                'tipo'                  => 'likert',
+                                'respuesta_correcta'   => null,
+                                'respuesta_correcta_id'=> null,
+                                'valor'                => $sp['valor'] ?? 5.0,
+                            ]);
+                        }
                     }
                 }
             }
+
+            DB::commit();
+            return response()->json(['message' => 'Actualizado'], Response::HTTP_OK);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('[UPDATE MULTIPLE] Error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error al actualizar respuestas'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        DB::commit();
-        return response()->json(['message' => 'Actualizado'], Response::HTTP_OK);
-
-    } catch (\Throwable $e) {
-        DB::rollBack();
-        Log::error('[UPDATE MULTIPLE] Error: ' . $e->getMessage());
-        return response()->json([
-            'message' => 'Error al actualizar respuestas'
-        ], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
-}
 
+    public function getEvaluacionCompleta($evaluacionId)
+    {
+        $evaluacion = Evaluacion::with([
+            'preguntas.tiposDeRespuesta',
+            'preguntas.respuestas.tipoRespuesta',
+            'preguntas.respuestas.opciones',
+            'preguntas.respuestas.opcionesBarraSatisfaccion',
+            'preguntas.respuestas.subpreguntas.opcionesLikert',
+        ])->findOrFail($evaluacionId);
 
-public function getEvaluacionCompleta($evaluacionId)
-{
-    $evaluacion = Evaluacion::with([
-        'preguntas.tiposDeRespuesta',
-        'preguntas.respuestas.tipoRespuesta',
-        'preguntas.respuestas.opciones',
-        'preguntas.respuestas.opcionesBarraSatisfaccion',
-        'preguntas.respuestas.subpreguntas.opcionesLikert',
-    ])->findOrFail($evaluacionId);
+        $preguntas = $evaluacion->preguntas->map(function($pregunta) {
+            $tipos = $pregunta->tiposDeRespuesta->pluck('tipo')->all();
 
-    $preguntas = $evaluacion->preguntas->map(function($pregunta) {
-        $tipos = $pregunta->tiposDeRespuesta->pluck('tipo')->all();
+            $resps = $pregunta->respuestas->map(function($resp) {
+                // mapeo original de opciones
+                $opcs = $resp->opciones->map(fn($o) => [
+                    'id'    => $o->id,
+                    'label' => $o->label,
+                    'valor' => $o->valor,
+                ])->values();
 
-        $resps = $pregunta->respuestas->map(function($resp) {
-            // mapeo original de opciones
-            $opcs = $resp->opciones->map(fn($o) => [
-                'id'    => $o->id,
-                'label' => $o->label,
-                'valor' => $o->valor,
-            ])->values();
+                // si no hay opciones en BD, cargo defaults según el tipo
+                if ($opcs->isEmpty()) {
+                    switch ($resp->tipoRespuesta->tipo) {
+                        case 'si_no':
+                            $opcs = collect([
+                                ['id'=>null, 'label'=>'Sí', 'valor'=>'si'],
+                                ['id'=>null, 'label'=>'No', 'valor'=>'no'],
+                            ]);
+                            break;
 
-            // si no hay opciones en BD, cargo defaults según el tipo
-            if ($opcs->isEmpty()) {
-                switch ($resp->tipoRespuesta->tipo) {
-                    case 'si_no':
-                        $opcs = collect([
-                            ['id'=>null, 'label'=>'Sí', 'valor'=>'si'],
-                            ['id'=>null, 'label'=>'No', 'valor'=>'no'],
-                        ]);
-                        break;
-
-                    case 'si_no_noestoyseguro':
-                        $opcs = collect([
-                            ['id'=>null, 'label'=>'Sí',               'valor'=>'si'],
-                            ['id'=>null, 'label'=>'No',               'valor'=>'no'],
-                            ['id'=>null, 'label'=>'No estoy seguro',  'valor'=>'no_estoy_seguro'],
-                        ]);
-                        break;
+                        case 'si_no_noestoyseguro':
+                            $opcs = collect([
+                                ['id'=>null, 'label'=>'Sí',               'valor'=>'si'],
+                                ['id'=>null, 'label'=>'No',               'valor'=>'no'],
+                                ['id'=>null, 'label'=>'No estoy seguro',  'valor'=>'no_estoy_seguro'],
+                            ]);
+                            break;
+                    }
                 }
+
+                return [
+                    'id'            => $resp->id,
+                    'tipo'          => $resp->tipoRespuesta->tipo,
+                    'valor'         => $resp->respuesta ?? '',
+                    'observaciones' => $resp->observaciones,
+                    'opciones'      => $opcs,
+                    'subpreguntas'  => $resp->subpreguntas->map(fn($sp) => [
+                        'id'       => $sp->id,
+                        'texto'    => $sp->texto,
+                        'opciones' => $sp->opcionesLikert->map(fn($ol) => [
+                            'id'    => $ol->id,
+                            'label' => $ol->label,
+                            'valor' => null,
+                        ])->values(),
+                    ])->values(),
+                ];
+            });
+
+            if ($resps->isEmpty()) {
+                // placeholder si no hay respuestas
+                $resps = collect([[
+                    'id'            => null,
+                    'tipo'          => $tipos[0] ?? null,
+                    'valor'         => '',
+                    'observaciones' => null,
+                    'opciones'      => [],
+                    'subpreguntas'  => [],
+                ]]);
             }
 
             return [
-                'id'            => $resp->id,
-                'tipo'          => $resp->tipoRespuesta->tipo,
-                'valor'         => $resp->respuesta ?? '',
-                'observaciones' => $resp->observaciones,
-                'opciones'      => $opcs,
-                'subpreguntas'  => $resp->subpreguntas->map(fn($sp) => [
-                    'id'       => $sp->id,
-                    'texto'    => $sp->texto,
-                    'opciones' => $sp->opcionesLikert->map(fn($ol) => [
-                        'id'    => $ol->id,
-                        'label' => $ol->label,
-                        'valor' => null,
-                    ])->values(),
-                ])->values(),
+                'id'                 => $pregunta->id,
+                'pregunta_id'        => $pregunta->id,
+                'pregunta'           => $pregunta->pregunta,
+                'tipos_de_respuesta' => array_map(fn($t) => ['tipo' => $t], $tipos),
+                'respuestas'         => $resps->values(),
             ];
-        });
+        })->values();
 
-        if ($resps->isEmpty()) {
-            // placeholder si no hay respuestas
-            $resps = collect([[
-                'id'            => null,
-                'tipo'          => $tipos[0] ?? null,
-                'valor'         => '',
-                'observaciones' => null,
-                'opciones'      => [],
-                'subpreguntas'  => [],
-            ]]);
-        }
-
-        return [
-            'id'                 => $pregunta->id,
-            'pregunta_id'        => $pregunta->id,
-            'pregunta'           => $pregunta->pregunta,
-            'tipos_de_respuesta' => array_map(fn($t) => ['tipo' => $t], $tipos),
-            'respuestas'         => $resps->values(),
-        ];
-    })->values();
-
-    return response()->json([
-        'nombre'    => $evaluacion->nombre,
-        'preguntas' => $preguntas,
-    ]);
-}
-
-
-
+        return response()->json([
+            'nombre'    => $evaluacion->nombre,
+            'preguntas' => $preguntas,
+        ]);
+    }
 
     private function guardarBarraSatisfaccion(Respuesta $r): void
     {
@@ -397,9 +386,6 @@ public function getEvaluacionCompleta($evaluacionId)
         OpcionBarraSatisfaccion::insert($data);
     }
 
-    /**
-     * Generar subpreguntas y opciones Likert
-     */
     private function guardarSubpreguntasLikert(Respuesta $r, array $subs): void
     {
         foreach ($subs as $sp) {
@@ -418,9 +404,6 @@ public function getEvaluacionCompleta($evaluacionId)
         }
     }
 
-    /**
-     * Guardar opciones de respuesta personalizadas
-     */
     private function guardarOpciones(Respuesta $r, array $opts): void
     {
         $data = array_map(fn($o) => [
@@ -453,29 +436,23 @@ public function getEvaluacionCompleta($evaluacionId)
         try {
             // 0️⃣ Buscar IDs de respuestas
             $respuestaIds = Respuesta::where('pregunta_id', $preguntaId)->pluck('id');
-            Log::info("[destroyPorPregunta] Respuesta IDs para pregunta $preguntaId: " . json_encode($respuestaIds));
 
             // 1️⃣ Eliminar opciones genéricas (opciones personalizadas, si aplica)
             RespuestaOpcion::whereIn('respuesta_id', $respuestaIds)->delete();
-            Log::info("[destroyPorPregunta] Opciones genéricas eliminadas.");
 
             // 2️⃣ Eliminar barra de satisfacción
             OpcionBarraSatisfaccion::whereIn('respuesta_id', $respuestaIds)->delete();
-            Log::info("[destroyPorPregunta] Opciones barra satisfacción eliminadas.");
-
+         
             // 3️⃣ Eliminar subpreguntas y sus opciones Likert
             $subIds = RespuestaSubpregunta::whereIn('respuesta_id', $respuestaIds)->pluck('id');
             OpcionLikert::whereIn('subpregunta_id', $subIds)->delete();
             RespuestaSubpregunta::whereIn('id', $subIds)->delete();
-            Log::info("[destroyPorPregunta] Subpreguntas y opciones Likert eliminadas.");
 
             // 4️⃣ Eliminar tipo de respuesta
             RespuestaTipo::where('pregunta_id', $preguntaId)->delete();
-            Log::info("[destroyPorPregunta] Tipos de respuesta eliminados.");
 
             // 5️⃣ Eliminar las respuestas
             $count = Respuesta::where('pregunta_id', $preguntaId)->delete();
-            Log::info("[destroyPorPregunta] Respuestas eliminadas: $count");
 
             DB::commit();
             return response()->json([
@@ -520,44 +497,42 @@ public function getEvaluacionCompleta($evaluacionId)
         }
     }
 
-private function actualizarTipoYLimpiarDetallePonderaciones(int $preguntaId, int $evaluacionId, string $tipo): void
-{
-    Log::info('[Ponderaciones][actualizarTipoYLimpiarDetallePonderaciones] Datos recibidos', [
-        'pregunta_id'     => $preguntaId,
-        'evaluacion_id'   => $evaluacionId,
-        'tipo_recibido'   => $tipo
-    ]);
+    private function actualizarTipoYLimpiarDetallePonderaciones(int $preguntaId, int $evaluacionId, string $tipo): void
+    {
+        Log::info('[Ponderaciones][actualizarTipoYLimpiarDetallePonderaciones] Datos recibidos', [
+            'pregunta_id'     => $preguntaId,
+            'evaluacion_id'   => $evaluacionId,
+            'tipo_recibido'   => $tipo
+        ]);
 
-    $tiposValidos = [
-        'texto', 'numero', 'barra_satisfaccion', '5emojis',
-        'si_no', 'si_no_noestoyseguro', 'likert',
-        'opcion', 'opcion_personalizada'
-    ];
+        $tiposValidos = [
+            'texto', 'numero', 'barra_satisfaccion', '5emojis',
+            'si_no', 'si_no_noestoyseguro', 'likert',
+            'opcion', 'opcion_personalizada'
+        ];
 
-    if (!in_array($tipo, $tiposValidos)) {
-        Log::warning("[Ponderaciones][actualizarTipoYLimpiar] Tipo inválido recibido: {$tipo}");
-        return;
+        if (!in_array($tipo, $tiposValidos)) {
+            Log::warning("[Ponderaciones][actualizarTipoYLimpiar] Tipo inválido recibido: {$tipo}");
+            return;
+        }
+
+        try {
+            $count = \App\Models\DetallePonderacion::where('pregunta_id', $preguntaId)
+                ->whereIn('ponderacion_id', function ($sub) use ($evaluacionId) {
+                    $sub->select('id')
+                        ->from('ponderaciones')
+                        ->where('evaluacion_id', $evaluacionId);
+                })
+                ->update([
+                    'tipo' => $tipo,
+                    'respuesta_correcta_id' => null,
+                    // 🔥 Esto evita error por NOT NULL si no acepta nulls en `valor`
+                    'valor' => DB::raw('valor') // ← mantiene el valor actual sin tocarlo
+                ]);
+
+            Log::info("[Ponderaciones][actualizarTipoYLimpiar] tipo={$tipo} actualizado en {$count} filas para pregunta_id={$preguntaId} y evaluacion_id={$evaluacionId}");
+        } catch (\Throwable $e) {
+            Log::error("[Ponderaciones][actualizarTipoYLimpiar] Error al actualizar: " . $e->getMessage());
+        }
     }
-
-    try {
-        $count = \App\Models\DetallePonderacion::where('pregunta_id', $preguntaId)
-            ->whereIn('ponderacion_id', function ($sub) use ($evaluacionId) {
-                $sub->select('id')
-                    ->from('ponderaciones')
-                    ->where('evaluacion_id', $evaluacionId);
-            })
-            ->update([
-                'tipo' => $tipo,
-                'respuesta_correcta_id' => null,
-                // 🔥 Esto evita error por NOT NULL si no acepta nulls en `valor`
-                'valor' => DB::raw('valor') // ← mantiene el valor actual sin tocarlo
-            ]);
-
-        Log::info("[Ponderaciones][actualizarTipoYLimpiar] tipo={$tipo} actualizado en {$count} filas para pregunta_id={$preguntaId} y evaluacion_id={$evaluacionId}");
-    } catch (\Throwable $e) {
-        Log::error("[Ponderaciones][actualizarTipoYLimpiar] Error al actualizar: " . $e->getMessage());
-    }
-}
-
-
 }
