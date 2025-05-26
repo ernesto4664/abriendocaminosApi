@@ -13,12 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PonderacionController extends Controller
 {
-
     public function store(Request $request)
     {
-        Log::info('[PONDERACION][STORE] Inicio de validación', $request->all());
-
-        // Reglas de validación
+       // Reglas de validación
         $rules = [
             'plan_id'       => 'required|integer|exists:planes_intervencion,id',
             'evaluacion_id' => 'required|integer|exists:evaluaciones,id',
@@ -35,7 +32,7 @@ class PonderacionController extends Controller
         $validator->sometimes('detalles.*.subpregunta_id', 'required|integer|exists:respuestas_subpreguntas,id', fn($input, $det) => $det->tipo === 'likert');
 
         if ($validator->fails()) {
-            Log::warning('[PONDERACION][STORE] Validación fallida', $validator->errors()->toArray());
+           
             return response()->json($validator->errors(), Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -46,8 +43,7 @@ class PonderacionController extends Controller
                 'evaluacion_id' => $request->evaluacion_id,
                 'user_id'       => auth()->id(),
             ]);
-            Log::info('[PONDERACION][STORE] Cabecera creada', ['id' => $ponderacion->id]);
-
+            
             foreach ($request->detalles as $det) {
                 $detalle = new DetallePonderacion([
                     'pregunta_id'           => $det['pregunta_id'],
@@ -63,7 +59,6 @@ class PonderacionController extends Controller
             }
 
             DB::commit();
-            Log::info('[PONDERACION][STORE] Commit exitoso');
 
             return response()->json($ponderacion->load('detalles'), Response::HTTP_CREATED);
 
@@ -74,14 +69,8 @@ class PonderacionController extends Controller
         }
     }
 
-    /**
-     * Obtener todas las ponderaciones con detalles enriquecidos
-     * → Devuelve un array puro de estructuras mapeadas
-     */
     public function completo()
     {
-        Log::info('[PONDERACION][COMPLETO] Inicio');
-
         try {
             $all = Ponderacion::with([
                 'evaluacion:id,nombre',
@@ -130,10 +119,8 @@ class PonderacionController extends Controller
         }
     }
 
-
     public function update(Request $request, $id)
     {
-        // 1) Validación igual que en store, añadiendo 'id' en la cabecera
         $rules = [
         'plan_id'       => 'required|integer|exists:planes_intervencion,id',
         'evaluacion_id' => 'required|integer|exists:evaluaciones,id',
@@ -226,11 +213,11 @@ class PonderacionController extends Controller
         ], Response::HTTP_OK);
     }
 
-        public function existeDetallePorPregunta($preguntaId)
-        {
-            $tiene = DetallePonderacion::where('pregunta_id', $preguntaId)->exists();
-            return response()->json(['tiene' => $tiene]);
-        }
+    public function existeDetallePorPregunta($preguntaId)
+    {
+        $tiene = DetallePonderacion::where('pregunta_id', $preguntaId)->exists();
+        return response()->json(['tiene' => $tiene]);
+    }
 
         public function destroy($evaluacionId)
     {
@@ -265,7 +252,6 @@ class PonderacionController extends Controller
 
     public function destroyDetalle($detalleId)
     {
-        Log::info("[PONDERACION][destroyDetalle] Llamado con id={$detalleId}");
         $detalle = DetallePonderacion::find($detalleId);
 
         if (! $detalle) {
@@ -280,5 +266,4 @@ class PonderacionController extends Controller
             'message' => 'Detalle eliminado correctamente.'
         ], Response::HTTP_OK);
     }
-
 }

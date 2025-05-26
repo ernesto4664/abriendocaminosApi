@@ -15,10 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TerritorioController extends Controller
 {
-
     public function index()
     {
-    
         try {
             $territorios = Territorio::with('linea')->get()->map(function ($t) {
                  
@@ -92,9 +90,6 @@ class TerritorioController extends Controller
         }
     }
 
-    /**
-     * Mostrar un territorio en detalle, incluyendo su plan de intervención.
-     */
     public function show($id)
     {
         try {
@@ -191,10 +186,6 @@ class TerritorioController extends Controller
         }
     }
 
-    /**
-     * Actualizar un territorio.
-     * → Devuelve el objeto actualizado
-     */
     public function update(Request $request, $id)
     {
         try {
@@ -232,10 +223,6 @@ class TerritorioController extends Controller
         }
     }
 
-    /**
-     * Eliminar un territorio.
-     * → Devuelve mensaje de confirmación
-     */
     public function destroy($id)
     {
         try {

@@ -11,10 +11,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class InstitucionEjecutoraController extends Controller
 {
-    /**
-     * Listar instituciones ejecutoras, opcionalmente filtradas por región.
-     * → Devuelve un array puro de InstitucionEjecutora
-     */
     public function index(Request $request)
     {
         try {
@@ -42,10 +38,6 @@ class InstitucionEjecutoraController extends Controller
         }
     }
 
-    /**
-     * Crear una institución ejecutora.
-     * → Devuelve el objeto InstitucionEjecutora creado
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -88,10 +80,6 @@ class InstitucionEjecutoraController extends Controller
         }
     }
 
-    /**
-     * Mostrar datos de una institución ejecutora.
-     * → Devuelve directamente el objeto InstitucionEjecutora
-     */
     public function show($id)
     {
         try {
@@ -115,10 +103,6 @@ class InstitucionEjecutoraController extends Controller
         }
     }
 
-    /**
-     * Actualizar una institución ejecutora.
-     * → Devuelve el objeto InstitucionEjecutora actualizado
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -167,10 +151,6 @@ class InstitucionEjecutoraController extends Controller
         }
     }
 
-    /**
-     * Eliminar una institución ejecutora.
-     * → Devuelve solo un mensaje de confirmación
-     */
     public function destroy($id)
     {
         try {

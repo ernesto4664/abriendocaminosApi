@@ -20,9 +20,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class PlanIntervencionController extends Controller
 {
-    /**
-     * Listar todos los planes de intervención
-     */
     public function index()
     {
         try {
@@ -34,9 +31,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Listar planes con todos sus detalles (evaluaciones, preguntas, respuestas, etc.)
-     */
     public function indexCompleto()
     {
         Log::info('[indexCompleto] Inicio');
@@ -56,9 +50,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Crear un nuevo plan de intervención con sus evaluaciones y preguntas
-     */
     public function store(Request $request)
     {
         Log::info('[STORE] Crear PlanIntervencion', ['data' => $request->all()]);
@@ -90,9 +81,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Mostrar un plan de intervención por ID
-     */
     public function show($id)
     {
         try {
@@ -106,9 +94,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Actualizar un plan de intervención
-     */
     public function update(Request $request, $id)
     {
         Log::info("[UPDATE] Plan {$id}", ['data' => $request->all()]);
@@ -133,9 +118,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Eliminar un plan de intervención
-     */
     public function destroy($id)
     {
         try {
@@ -150,9 +132,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Obtener planes de un territorio específico
-     */
     public function getPlanPorTerritorio($territorioId)
     {
         try {
@@ -166,9 +145,6 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Obtener planes por línea de intervención
-     */
     public function getPlanesPorLinea($lineaId)
     {
         try {
@@ -182,14 +158,10 @@ class PlanIntervencionController extends Controller
         }
     }
 
-    /**
-     * Obtener evaluaciones (con sus preguntas) de un plan específico
-     */
     public function getEvaluacionesConPreguntas(int $planId)
     {
         try {
-            Log::info("[PlanIntervencion][getEvaluacionesConPreguntas] Inicio, planId={$planId}");
-
+            
             // 1) Cargar plan con evaluaciones sin ponderaciones + relaciones necesarias
             $plan = PlanIntervencion::with([
                 'evaluaciones' => function ($qe) {
@@ -294,6 +266,4 @@ class PlanIntervencionController extends Controller
             );
         }
     }
-
-
 }

@@ -11,14 +11,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class NNAController extends Controller
 {
-    /**
-     * Listar todos los NNA
-     * → Devuelve un array puro para que el front lo consuma directamente
-     */
     public function index()
     {
         try {
-            // TODO: reemplaza la siguiente línea con NNA::all()
+
             $nnaList = [];
 
             return response()->json($nnaList, Response::HTTP_OK);
@@ -31,21 +27,10 @@ class NNAController extends Controller
         }
     }
 
-    /**
-     * Crear un nuevo NNA
-     * → Devuelve el objeto NNA creado
-     */
     public function store(Request $request)
     {
-        // TODO: agrega aquí las reglas de validación necesarias
-        // $request->validate([
-        //     'campo1' => 'required|string',
-        //     // …
-        // ]);
-
         try {
-            // TODO: crea el NNA con algo como:
-            // $nna = NNA::create($request->only(['campo1', 'campo2', …]));
+
             $nna = null; // placeholder
 
             return response()->json($nna, Response::HTTP_CREATED);
@@ -58,14 +43,10 @@ class NNAController extends Controller
         }
     }
 
-    /**
-     * Mostrar un NNA por ID
-     * → Devuelve el objeto NNA o 404
-     */
     public function show($id)
     {
         try {
-            // TODO: $nna = NNA::findOrFail($id);
+
             $nna = null; // placeholder
 
             return response()->json($nna, Response::HTTP_OK);
@@ -83,19 +64,10 @@ class NNAController extends Controller
         }
     }
 
-    /**
-     * Actualizar un NNA existente
-     * → Devuelve el objeto actualizado o 404
-     */
     public function update(Request $request, $id)
     {
-        // TODO: agrega aquí las reglas de validación necesarias
-        // $request->validate([...]);
-
         try {
-            // TODO: encuentra y actualiza
-            // $nna = NNA::findOrFail($id);
-            // $nna->update($request->only(['campo1', 'campo2', …]));
+
             $nna = null; // placeholder
 
             return response()->json($nna, Response::HTTP_OK);
@@ -113,10 +85,6 @@ class NNAController extends Controller
         }
     }
 
-    /**
-     * Eliminar un NNA
-     * → Devuelve mensaje de confirmación o 404
-     */
     public function destroy($id)
     {
         try {

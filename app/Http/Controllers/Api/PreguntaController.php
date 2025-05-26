@@ -11,10 +11,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class PreguntaController extends Controller
 {
-    /**
-     * Listar todas las preguntas
-     * → Devuelve un array puro de Pregunta
-     */
     public function index()
     {
         try {
@@ -29,14 +25,8 @@ class PreguntaController extends Controller
         }
     }
 
-    /**
-     * Crear nueva pregunta
-     * → Devuelve el objeto Pregunta creado
-     */
     public function store(Request $request)
     {
-        Log::info('📌 [STORE] Recibida solicitud para crear una Pregunta', ['data' => $request->all()]);
-
         $request->validate([
             'evaluacion_id' => 'required|exists:evaluaciones,id',
             'pregunta'      => 'required|string|max:255',
@@ -58,10 +48,6 @@ class PreguntaController extends Controller
         }
     }
 
-    /**
-     * Mostrar pregunta específica
-     * → Devuelve el objeto Pregunta o 404
-     */
     public function show($id)
     {
         try {
@@ -82,14 +68,8 @@ class PreguntaController extends Controller
         }
     }
 
-    /**
-     * Actualizar pregunta existente
-     * → Devuelve el objeto actualizado
-     */
     public function update(Request $request, $id)
     {
-        Log::info('📌 [UPDATE] Actualizando Pregunta', ['pregunta_id' => $id, 'data' => $request->all()]);
-
         $request->validate([
             'evaluacion_id' => 'sometimes|required|exists:evaluaciones,id',
             'pregunta'      => 'sometimes|required|string|max:255',
@@ -117,14 +97,8 @@ class PreguntaController extends Controller
         }
     }
 
-    /**
-     * Eliminar pregunta
-     * → Devuelve mensaje de confirmación
-     */
     public function destroy($id)
     {
-        Log::info('📌 [DELETE] Eliminando Pregunta', ['pregunta_id' => $id]);
-
         try {
             $pregunta = Pregunta::findOrFail($id);
             $pregunta->delete();

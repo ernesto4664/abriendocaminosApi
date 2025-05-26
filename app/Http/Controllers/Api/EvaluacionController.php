@@ -18,10 +18,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EvaluacionController extends Controller
 {
-    /**
-     * Listar todas las evaluaciones con sus preguntas
-     * Devuelve directamente un array de Evaluacion
-     */
     public function index()
     {
         try {
@@ -71,10 +67,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Crear una nueva evaluación
-     * Devuelve el objeto Evaluacion creado
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -98,10 +90,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Mostrar una evaluación por ID
-     * Devuelve directamente el objeto Evaluacion
-     */
     public function show($id)
     {
         try {
@@ -121,10 +109,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Actualizar evaluación existente
-     * Devuelve el objeto Evaluacion actualizado
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -154,10 +138,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Eliminar evaluación
-     * Devuelve un mensaje de confirmación
-     */
     public function destroy($id)
     {
         try {
@@ -180,10 +160,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Listar evaluaciones de un plan que no tienen respuestas
-     * Devuelve directamente un array de Evaluacion
-     */
     public function getEvaluacionesSinRespuestas($planId)
     {
         try {
