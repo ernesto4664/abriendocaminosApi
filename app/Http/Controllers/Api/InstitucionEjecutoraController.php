@@ -28,7 +28,18 @@ class InstitucionEjecutoraController extends Controller
             }
 
             $instituciones = $query->get();
-            return response()->json($instituciones, Response::HTTP_OK);
+
+            // ✅ Forzamos conversión a array para incluir appends
+            $institucionesArray = $instituciones->map(function ($inst) {
+                if ($inst->territorio) {
+                    $inst->territorio->regiones;
+                    $inst->territorio->provincias;
+                    $inst->territorio->comunas;
+                }
+                return $inst->toArray(); // 👈 Esto hace que se incluyan los accessors
+            });
+
+            return response()->json($institucionesArray, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error('Error al listar instituciones ejecutoras: ' . $e->getMessage());
@@ -37,6 +48,7 @@ class InstitucionEjecutoraController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
 
     public function store(Request $request)
     {
@@ -88,7 +100,14 @@ class InstitucionEjecutoraController extends Controller
                 'territorio'
             ])->findOrFail($id);
 
-            return response()->json($inst, Response::HTTP_OK);
+            // ✅ Forzar carga de atributos para que se evalúen y se incluyan en el array final
+            if ($inst->territorio) {
+                $inst->territorio->regiones;
+                $inst->territorio->provincias;
+                $inst->territorio->comunas;
+            }
+
+            return response()->json($inst->toArray(), Response::HTTP_OK); // 👈 Esto incluye todo
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
