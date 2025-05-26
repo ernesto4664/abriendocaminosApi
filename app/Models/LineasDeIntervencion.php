@@ -9,4 +9,10 @@ class LineasDeIntervencion extends Model
     protected $table = 'lineasdeintervenciones';
 
     protected $fillable = ['nombre', 'descripcion'];
+
+    public function planDeIntervencion()
+    {
+        return $this->hasOne(\App\Models\PlanIntervencion::class, 'linea_id');
+    }
+
 }

@@ -54,29 +54,28 @@ class TerritorioController extends Controller
                 }
 
                 // 5) Devolver todo, añadiendo 'plan_intervencion'
-                return [
-                    'id'                => $t->id,
-                    'nombre_territorio' => $t->nombre_territorio,
-                    'cod_territorio'    => $t->cod_territorio,
-                    'linea'             => $t->linea
-                                            ? ['id' => $t->linea->id, 'nombre' => $t->linea->nombre]
-                                            : null,
-                    'regiones'          => $regiones,
-                    'provincias'        => $provincias,
-                    'comunas'           => $comunas,
-                    // campos para el front
-                    'region_nombres'    => $regiones->pluck('nombre')->join(', '),
-                    'provincia_nombres' => $provincias->pluck('nombre')->join(', '),
-                    'comuna_nombres'    => $comunas->pluck('nombre')->join(', '),
-                    'plazas'            => $t->plazas,
-                    'cuotas'            => [
-                        'cuota_1' => $t->cuota_1,
-                        'cuota_2' => $t->cuota_2,
-                        'total'   => $t->total,
-                    ],
-                    // bloque de plan de intervención
-                    'plan_intervencion' => $plan,
-                ];
+                    return [
+                        'id'                => $t->id,
+                        'nombre_territorio' => $t->nombre_territorio,
+                        'cod_territorio'    => $t->cod_territorio,
+                        'linea_id'          => $t->linea_id, // ✅ clave que necesita el filtro en el front
+                        'linea'             => $t->linea
+                                                ? ['id' => $t->linea->id, 'nombre' => $t->linea->nombre]
+                                                : null,
+                        'regiones'          => $regiones,
+                        'provincias'        => $provincias,
+                        'comunas'           => $comunas,
+                        'region_nombres'    => $regiones->pluck('nombre')->join(', '),
+                        'provincia_nombres' => $provincias->pluck('nombre')->join(', '),
+                        'comuna_nombres'    => $comunas->pluck('nombre')->join(', '),
+                        'plazas'            => $t->plazas,
+                        'cuotas'            => [
+                            'cuota_1' => $t->cuota_1,
+                            'cuota_2' => $t->cuota_2,
+                            'total'   => $t->total,
+                        ],
+                        'plan_intervencion' => $plan,
+                    ];
             });
 
             return response()->json($territorios, Response::HTTP_OK);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\InstitucionEjecutora;
+use App\Models\LineasDeIntervencion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ class InstitucionEjecutoraController extends Controller
         try {
             $query = InstitucionEjecutora::with([
                 'planDeIntervencion',
-                'territorio',
+                'territorio.linea.planDeIntervencion',
                 'planDeIntervencion.evaluaciones.preguntas'
             ]);
 
@@ -29,14 +30,25 @@ class InstitucionEjecutoraController extends Controller
 
             $instituciones = $query->get();
 
-            // ✅ Forzamos conversión a array para incluir appends
             $institucionesArray = $instituciones->map(function ($inst) {
+                // Si no tiene plan asignado directamente, lo heredamos desde la línea
+                if (!$inst->planDeIntervencion && $inst->territorio && $inst->territorio->linea && $inst->territorio->linea->planDeIntervencion) {
+                    $inst->planDeIntervencion = $inst->territorio->linea->planDeIntervencion;
+                }
+
+                // Unificamos para que también venga como 'plan_de_intervencion'
+                if (!$inst->plan_de_intervencion && $inst->planDeIntervencion) {
+                    $inst->plan_de_intervencion = $inst->planDeIntervencion;
+                }
+
+                // Forzamos carga de regiones, provincias y comunas
                 if ($inst->territorio) {
                     $inst->territorio->regiones;
                     $inst->territorio->provincias;
                     $inst->territorio->comunas;
                 }
-                return $inst->toArray(); // 👈 Esto hace que se incluyan los accessors
+
+                return $inst->toArray();
             });
 
             return response()->json($institucionesArray, Response::HTTP_OK);
@@ -48,7 +60,6 @@ class InstitucionEjecutoraController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
-
 
     public function store(Request $request)
     {
@@ -95,17 +106,22 @@ class InstitucionEjecutoraController extends Controller
     public function show($id)
     {
         try {
-            $inst = InstitucionEjecutora::with([
-                'planDeIntervencion',
-                'territorio'
-            ])->findOrFail($id);
+                $inst = InstitucionEjecutora::with([
+                    'planDeIntervencion',
+                    'territorio',
+                    'territorio.linea.planDeIntervencion',
+                ])->findOrFail($id);
 
-            // ✅ Forzar carga de atributos para que se evalúen y se incluyan en el array final
-            if ($inst->territorio) {
-                $inst->territorio->regiones;
-                $inst->territorio->provincias;
-                $inst->territorio->comunas;
-            }
+                // Si la institución no tiene plan directo, se lo heredamos desde la línea del territorio
+                if (!$inst->planDeIntervencion && $inst->territorio && $inst->territorio->linea && $inst->territorio->linea->planDeIntervencion) {
+                    $inst->planDeIntervencion = $inst->territorio->linea->planDeIntervencion;
+                }
+                // ✅ Forzar carga de atributos para que se evalúen y se incluyan en el array final
+                if ($inst->territorio) {
+                    $inst->territorio->regiones;
+                    $inst->territorio->provincias;
+                    $inst->territorio->comunas;
+                }
 
             return response()->json($inst->toArray(), Response::HTTP_OK); // 👈 Esto incluye todo
 
