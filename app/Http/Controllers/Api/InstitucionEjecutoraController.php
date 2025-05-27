@@ -70,6 +70,8 @@ class InstitucionEjecutoraController extends Controller
             'telefono'                   => 'required|string|max:15',
             'email'                      => 'required|email|max:255',
             'territorio_id'              => 'required|exists:territorios,id',
+            'plazas'                     => 'nullable|integer|min:0',
+            'planesdeintervencion_id'   => 'nullable|exists:planes_intervencion,id',
             'periodo_registro_desde'     => 'required|date',
             'periodo_registro_hasta'     => 'required|date|after_or_equal:periodo_registro_desde',
             'periodo_seguimiento_desde'  => 'required|date',
@@ -85,6 +87,8 @@ class InstitucionEjecutoraController extends Controller
                 'telefono',
                 'email',
                 'territorio_id',
+                'plazas',
+                'planesdeintervencion_id',
                 'periodo_registro_desde',
                 'periodo_registro_hasta',
                 'periodo_seguimiento_desde',
@@ -102,6 +106,7 @@ class InstitucionEjecutoraController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
 
     public function show($id)
     {
@@ -141,16 +146,18 @@ class InstitucionEjecutoraController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'nombre_fantasia'            => 'sometimes|required|string|max:255',
-            'nombre_legal'               => 'sometimes|required|string|max:255',
-            'rut'                        => 'sometimes|required|string|max:20',
-            'telefono'                   => 'sometimes|required|string|max:15',
-            'email'                      => 'sometimes|required|email|max:255',
-            'territorio_id'              => 'sometimes|required|exists:territorios,id',
-            'periodo_registro_desde'     => 'sometimes|required|date',
-            'periodo_registro_hasta'     => 'sometimes|required|date|after_or_equal:periodo_registro_desde',
-            'periodo_seguimiento_desde'  => 'sometimes|required|date',
-            'periodo_seguimiento_hasta'  => 'sometimes|required|date|after_or_equal:periodo_seguimiento_desde',
+            'nombre_fantasia'            => 'sometimes|string|max:255',
+            'nombre_legal'               => 'sometimes|string|max:255',
+            'rut'                        => 'sometimes|string|max:20',
+            'telefono'                   => 'sometimes|string|max:15',
+            'email'                      => 'sometimes|email|max:255',
+            'territorio_id'              => 'sometimes|exists:territorios,id',
+            'plazas'                     => 'nullable|integer|min:0',
+            'planesdeintervencion_id'   => 'nullable|exists:planes_intervencion,id',
+            'periodo_registro_desde'     => 'sometimes|date',
+            'periodo_registro_hasta'     => 'sometimes|date|after_or_equal:periodo_registro_desde',
+            'periodo_seguimiento_desde'  => 'sometimes|date',
+            'periodo_seguimiento_hasta'  => 'sometimes|date|after_or_equal:periodo_seguimiento_desde',
         ]);
 
         DB::beginTransaction();
@@ -163,6 +170,8 @@ class InstitucionEjecutoraController extends Controller
                 'telefono',
                 'email',
                 'territorio_id',
+                'plazas',
+                'planesdeintervencion_id',
                 'periodo_registro_desde',
                 'periodo_registro_hasta',
                 'periodo_seguimiento_desde',
@@ -185,6 +194,7 @@ class InstitucionEjecutoraController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
 
     public function destroy($id)
     {
