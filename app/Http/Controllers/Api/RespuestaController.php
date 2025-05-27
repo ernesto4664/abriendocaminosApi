@@ -481,7 +481,7 @@ class RespuestaController extends Controller
 
             // 🧹 Luego eliminamos respuestas y tipo anterior
             $this->destroyPorPregunta($preguntaId);
-            \App\Models\TipoDeRespuesta::where('pregunta_id', $preguntaId)->delete();
+            \App\Models\RespuestaTipo::where('pregunta_id', $preguntaId)->delete();
 
             // 🧼 Finalmente limpiamos cabecera si ya no hay detalles
             Ponderacion::where('evaluacion_id', $evaluacionId)
