@@ -10,10 +10,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LineasDeIntervencionController extends Controller
 {
-    /**
-     * Listar todas las líneas de intervención
-     * → Devuelve un array puro para el front
-     */
     public function index()
     {
         try {
@@ -28,10 +24,6 @@ class LineasDeIntervencionController extends Controller
         }
     }
 
-    /**
-     * Crear una nueva línea de intervención
-     * → Devuelve el objeto creado
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -51,10 +43,6 @@ class LineasDeIntervencionController extends Controller
         }
     }
 
-    /**
-     * Mostrar una línea de intervención por ID
-     * → Devuelve el objeto o 404
-     */
     public function show($id)
     {
         try {
@@ -74,10 +62,6 @@ class LineasDeIntervencionController extends Controller
         }
     }
 
-    /**
-     * Actualizar una línea de intervención existente
-     * → Devuelve el objeto actualizado
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -103,10 +87,6 @@ class LineasDeIntervencionController extends Controller
         }
     }
 
-    /**
-     * Eliminar una línea de intervención
-     * → Devuelve mensaje de confirmación
-     */
     public function destroy($id)
     {
         try {

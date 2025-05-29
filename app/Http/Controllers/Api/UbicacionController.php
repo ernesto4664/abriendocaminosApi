@@ -190,10 +190,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UbicacionController extends Controller
 {
-    /**
-     * Obtener todas las regiones
-     * → Devuelve array puro de Region
-     */
     public function getRegiones()
     {
         try {
@@ -206,10 +202,6 @@ class UbicacionController extends Controller
         }
     }
 
-    /**
-     * Obtener provincias según una o varias regiones
-     * → Devuelve array puro de Provincia con sus comunas
-     */
     public function getProvincias(Request $request)
     {
         $ids = $request->query('region_ids');
@@ -227,10 +219,6 @@ class UbicacionController extends Controller
         }
     }
 
-    /**
-     * Obtener comunas según una o varias provincias
-     * → Devuelve array puro de Comuna
-     */
     public function getComunas(Request $request)
     {
         $ids = $request->query('provincia_ids');

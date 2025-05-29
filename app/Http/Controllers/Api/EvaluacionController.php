@@ -4,6 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Evaluacion;
+use App\Models\Pregunta;
+use App\Models\Respuesta;
+use App\Models\RespuestaOpcion;
+use App\Models\RespuestaTipo;
+use App\Models\RespuestaSubpregunta;
+use App\Models\OpcionLikert;
+use App\Models\OpcionBarraSatisfaccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,14 +18,45 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EvaluacionController extends Controller
 {
-    /**
-     * Listar todas las evaluaciones con sus preguntas
-     * Devuelve directamente un array de Evaluacion
-     */
     public function index()
     {
         try {
-            $evaluaciones = Evaluacion::with('preguntas')->get();
+            $evaluaciones = Evaluacion::with([
+                    'preguntas.respuestas.opciones',
+                    'preguntas.respuestas.subpreguntas.opcionesLikert',
+                    'preguntas.respuestas.opcionesBarraSatisfaccion',
+                    'preguntas.tiposDeRespuesta',
+                ])
+                ->get()
+                ->filter(function ($evaluacion) {
+                    return $evaluacion->preguntas->every(function ($pregunta) {
+                        $respuesta = $pregunta->respuestas->first();
+                        $tipo = $pregunta->tiposDeRespuesta->first()?->tipo;
+
+                        if (!$respuesta) {
+                            return false;
+                        }
+
+                        // Si tiene opciones, barra o subpreguntas, es válida
+                        if (
+                            $respuesta->opciones->isNotEmpty() ||
+                            $respuesta->subpreguntas->isNotEmpty() ||
+                            $respuesta->opcionesBarraSatisfaccion->isNotEmpty()
+                        ) {
+                            return true;
+                        }
+
+                        // Si es tipo texto o número, basta con que exista la respuesta
+                        if (in_array($tipo, ['texto', 'numero'])) {
+                            return true;
+                        }
+
+                        // En cualquier otro caso, es incompleta
+                        return false;
+                    });
+                })
+                ->values(); // Resetear índices después del filter
+
             return response()->json($evaluaciones, Response::HTTP_OK);
 
         } catch (\Throwable $e) {
@@ -29,10 +67,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Crear una nueva evaluación
-     * Devuelve el objeto Evaluacion creado
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -56,10 +90,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Mostrar una evaluación por ID
-     * Devuelve directamente el objeto Evaluacion
-     */
     public function show($id)
     {
         try {
@@ -79,10 +109,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Actualizar evaluación existente
-     * Devuelve el objeto Evaluacion actualizado
-     */
     public function update(Request $request, $id)
     {
         $request->validate([
@@ -112,10 +138,6 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Eliminar evaluación
-     * Devuelve un mensaje de confirmación
-     */
     public function destroy($id)
     {
         try {
@@ -138,19 +160,20 @@ class EvaluacionController extends Controller
         }
     }
 
-    /**
-     * Listar evaluaciones de un plan que no tienen respuestas
-     * Devuelve directamente un array de Evaluacion
-     */
     public function getEvaluacionesSinRespuestas($planId)
     {
         try {
             $evaluaciones = Evaluacion::where('plan_id', $planId)
                 ->with('preguntas.respuestas')
                 ->get()
-                ->filter(fn($e) => $e->preguntas->every(fn($p) => $p->respuestas->isEmpty()))
+                ->filter(fn($e) =>
+                    $e->preguntas->every(fn($p) => $p->respuestas->isEmpty())
+                )
                 ->values();
-            return response()->json($evaluaciones, Response::HTTP_OK);
+
+            return response()->json([
+                'evaluaciones' => $evaluaciones
+            ], Response::HTTP_OK);
 
         } catch (\Throwable $e) {
             Log::error("Error al listar evaluaciones sin respuestas para plan {$planId}: " . $e->getMessage());

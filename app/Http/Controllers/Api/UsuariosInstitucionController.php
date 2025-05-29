@@ -12,10 +12,6 @@ use App\Models\UsuariosInstitucion;
 
 class UsuariosInstitucionController extends Controller
 {
-    /**
-     * Listar todos los usuarios de institución
-     * → Devuelve array puro de UsuariosInstitucion
-     */
     public function index()
     {
         try {
@@ -27,13 +23,8 @@ class UsuariosInstitucionController extends Controller
         }
     }
 
-    /**
-     * Crear un nuevo usuario de institución
-     * → Devuelve el objeto creado
-     */
     public function store(Request $request)
     {
-        Log::info('[UsuariosInstitucion][store] Datos recibidos', $request->all());
         $validated = $request->validate([
             'nombres'         => 'required|string|max:255',
             'apellidos'       => 'required|string|max:255',
@@ -59,10 +50,6 @@ class UsuariosInstitucionController extends Controller
         }
     }
 
-    /**
-     * Obtener un usuario específico
-     * → Devuelve el objeto UsuarioInstitucion
-     */
     public function show($id)
     {
         try {
@@ -76,10 +63,6 @@ class UsuariosInstitucionController extends Controller
         }
     }
 
-    /**
-     * Actualizar un usuario
-     * → Devuelve el objeto actualizado
-     */
     public function update(Request $request, $id)
     {
         try {
@@ -110,10 +93,6 @@ class UsuariosInstitucionController extends Controller
         }
     }
 
-    /**
-     * Eliminar un usuario
-     * → Devuelve mensaje de confirmación
-     */
     public function destroy($id)
     {
         try {

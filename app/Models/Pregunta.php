@@ -29,5 +29,11 @@ class Pregunta extends Model {
     {
         return $this->hasMany(RespuestaSubpregunta::class, 'pregunta_id');
     }
+
+        public function opcionesGlobales()
+    {
+        // en tu tabla respuesta_opciones ya tienes un campo pregunta_id
+        return $this->hasMany(RespuestaOpcion::class, 'pregunta_id');
+    }
 }
 

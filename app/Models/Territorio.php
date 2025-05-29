@@ -23,6 +23,12 @@ class Territorio extends Model
         'comuna_id' => 'array'
     ];
 
+    protected $appends = [ // ✅ esto agrega los atributos calculados al JSON
+    'regiones',
+    'provincias',
+    'comunas'
+    ];
+
     // Relación con las provincias
     public function getProvinciasAttribute()
     {
