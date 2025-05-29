@@ -16,6 +16,11 @@ use App\Http\Controllers\Api\LineasDeIntervencionController;
 use App\Http\Controllers\Api\UsuariosInstitucionController;
 use App\Http\Controllers\Api\AuthUsuariosInstitucionController;
 use App\Http\Controllers\Api\PonderacionController;
+use App\Http\Controllers\Api\DocumentosFormulariosController;
+
+use App\Http\Controllers\Api\RegistroNnasController;
+use App\Http\Controllers\Api\RegistroasplController;
+use App\Http\Controllers\Api\RegistroCuidadorController;
 
 Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function () {
     // Rutas para obtener regiones, provincias y comunas de manera dinámica
@@ -93,7 +98,29 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
 
     Route::post('ponderaciones', [PonderacionController::class, 'store']);
     Route::get('ponderaciones/completo', [PonderacionController::class, 'completo']);
+
+    // 📌 Rutas para Documentos de Formulario NNA, cuidardor y privado de libertad
+    //Route::apiResource('documentos', App\Http\Controllers\Api\DocumentosController::class)->only(['index','store','update','destroy']);
+    Route::get('/documentos', [DocumentosFormulariosController::class, 'index']);
+    Route::post('/documentos', [DocumentosFormulariosController::class, 'store']);
+    Route::get('/documentos/{id}', [DocumentosFormulariosController::class, 'show']);
+    Route::match(['post','put'], 'documentos/{id}', [DocumentosFormulariosController::class, 'update']);
+    Route::delete('/documentos/{id}', [DocumentosFormulariosController::class, 'destroy']);
+    Route::get('documentos/{documento}/download', [DocumentosFormulariosController::class,'download']);
+
+
+    Route::get('registro-nna/documento-nna', [DocumentosFormulariosController::class, 'downloadNnaDocumento']);
+    Route::get('/instituciones/buscarPorNombre', [InstitucionEjecutoraController::class, 'buscarPorNombre']);      
+
+    Route::post('/registro-nna', [RegistroNnasController::class, 'store']);
+    Route::get('/registro-nna/get-nna', [RegistroNnasController::class, 'getNna']);
+    Route::post('/registro-aspl', [RegistroasplController::class, 'store']);
+    Route::post('/registro-cuidador', [RegistroCuidadorController::class, 'store']);
+    Route::get('/registro-cuidador/documento-cuidador', [DocumentosFormulariosController::class, 'downloadCuidadorDocumento']);
+
 });
+
+
 
 
 Route::get('/v1/get-static-token', [TokenController::class, 'getStaticToken']); // Genera el token

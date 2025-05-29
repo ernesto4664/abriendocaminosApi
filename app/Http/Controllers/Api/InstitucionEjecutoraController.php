@@ -193,4 +193,13 @@ class InstitucionEjecutoraController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+        public function buscarPorNombre()
+    {
+        $instituciones = InstitucionEjecutora::select('id', 'nombre_fantasia')->orderBy('nombre_fantasia')->get();
+
+        return response()->json([
+            'status' => true,
+            'data' => $instituciones
+        ]);
+    }
 }
