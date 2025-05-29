@@ -108,9 +108,18 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
 
     // 📌 Rutas para Ponderaciones
 
-<<<<<<< HEAD
-    Route::post('ponderaciones', [PonderacionController::class, 'store']);
-    Route::get('ponderaciones/completo', [PonderacionController::class, 'completo']);
+    Route::post('/ponderaciones', [PonderacionController::class, 'store']);
+    Route::get('/ponderaciones/completo', [PonderacionController::class, 'completo']);
+    Route::get  ('/ponderaciones/{id}/completo', [PonderacionController::class, 'completoPorId']);
+    Route::put  ('/ponderaciones/{id}',          [PonderacionController::class, 'update']);
+
+        Route::get('ponderaciones/existe-detalle/{preguntaId}', 
+        [PonderacionController::class, 'existeDetallePorPregunta']
+    );
+
+    Route::delete('ponderaciones/detalle/{detalleId}', [PonderacionController::class,'destroyDetalle']);
+
+    Route::delete('/ponderaciones/{evaluacionId}', [PonderacionController::class, 'destroy']);
 
     // 📌 Rutas para Documentos de Formulario NNA, cuidardor y privado de libertad
     //Route::apiResource('documentos', App\Http\Controllers\Api\DocumentosController::class)->only(['index','store','update','destroy']);
@@ -130,20 +139,6 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::post('/registro-aspl', [RegistroasplController::class, 'store']);
     Route::post('/registro-cuidador', [RegistroCuidadorController::class, 'store']);
     Route::get('/registro-cuidador/documento-cuidador', [DocumentosFormulariosController::class, 'downloadCuidadorDocumento']);
-=======
-    Route::post('/ponderaciones', [PonderacionController::class, 'store']);
-    Route::get('/ponderaciones/completo', [PonderacionController::class, 'completo']);
-    Route::get  ('/ponderaciones/{id}/completo', [PonderacionController::class, 'completoPorId']);
-    Route::put  ('/ponderaciones/{id}',          [PonderacionController::class, 'update']);
-
-        Route::get('ponderaciones/existe-detalle/{preguntaId}', 
-        [PonderacionController::class, 'existeDetallePorPregunta']
-    );
-
-    Route::delete('ponderaciones/detalle/{detalleId}', [PonderacionController::class,'destroyDetalle']);
-
-    Route::delete('/ponderaciones/{evaluacionId}', [PonderacionController::class, 'destroy']);
->>>>>>> e5488a6e1a795ae93bdb4677d3d2e48f03ead9e6
 
 });
 
