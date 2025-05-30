@@ -53,44 +53,64 @@ class AuthUsuariosInstitucionController extends Controller
     /**
      * 🔹 Inicio de sesión
      */
-    public function login(Request $request)
-    {
-        // validación de inputs
+ public function login(Request $request)
+{
+    Log::info('Intentando iniciar sesión para el email: ' . $request->email);
+
+    // Validación de inputs
+    try {
         $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string|min:6',
         ]);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        Log::warning('Error de validación al intentar iniciar sesión.', [
+            'errores' => $e->errors(),
+            'input'   => $request->all(),
+        ]);
 
-        try {
-            $usuario = UsuariosInstitucion::where('email', $request->email)->firstOrFail();
-
-            if (! Hash::check($request->password, $usuario->password)) {
-                throw new ValidationException(validator: null, response: null, customResponse: null);
-            }
-
-            $token = $usuario->createToken('authToken')->plainTextToken;
-
-            return response()->json([
-                'usuario' => $usuario,
-                'token'   => $token,
-            ], Response::HTTP_OK);
-
-        } catch (ValidationException) {
-            return response()->json([
-                'message' => 'Las credenciales son incorrectas'
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Usuario no encontrado'
-            ], Response::HTTP_NOT_FOUND);
-
-        } catch (\Throwable $e) {
-            Log::error('Error en login de usuario de institución: ' . $e->getMessage());
-
-            return response()->json([
-                'message' => 'Error interno al iniciar sesión'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        throw $e;
     }
+
+    try {
+        $usuario = UsuariosInstitucion::where('email', $request->email)->firstOrFail();
+        Log::info('Usuario encontrado: ' . $usuario->email);
+
+        if (!Hash::check($request->password, $usuario->password)) {
+            Log::warning('Contraseña incorrecta para el email: ' . $request->email);
+            throw new ValidationException(validator: null, response: null, customResponse: null);
+        }
+
+        $token = $usuario->createToken('authToken')->plainTextToken;
+        Log::info('Token generado exitosamente para el usuario: ' . $usuario->email);
+
+        return response()->json([
+            'usuario' => $usuario,
+            'token'   => $token,
+        ], Response::HTTP_OK);
+
+    } catch (ValidationException) {
+        Log::warning('Las credenciales proporcionadas son inválidas para el email: ' . $request->email);
+
+        return response()->json([
+            'message' => 'Las credenciales son incorrectas'
+        ], Response::HTTP_UNPROCESSABLE_ENTITY);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        Log::warning('Usuario no encontrado para el email: ' . $request->email);
+
+        return response()->json([
+            'message' => 'Usuario no encontrado'
+        ], Response::HTTP_NOT_FOUND);
+
+    } catch (\Throwable $e) {
+        Log::error('Error inesperado al iniciar sesión: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'message' => 'Error interno al iniciar sesión'
+        ], Response::HTTP_INTERNAL_SERVER_ERROR);
+    }
+}
 }
