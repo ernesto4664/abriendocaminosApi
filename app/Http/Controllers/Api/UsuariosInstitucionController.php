@@ -73,23 +73,34 @@ class UsuariosInstitucionController extends Controller
     {
         try {
             $user = UsuariosInstitucion::findOrFail($id);
+
             $validated = $request->validate([
-                'nombres'         => 'sometimes|string|max:255',
-                'apellidos'       => 'sometimes|string|max:255',
-                'rut'             => ['sometimes','string',Rule::unique('usuarios_institucion')->ignore($user->id)],
-                'sexo'            => ['sometimes',Rule::in(['M','F'])],
-                'fecha_nacimiento'=> 'sometimes|date',
-                'profesion'       => 'nullable|string',
-                'email'           => ['sometimes','email',Rule::unique('usuarios_institucion')->ignore($user->id)],
-                'rol'             => ['sometimes',Rule::in(['SEREMI','COORDINADOR','PROFESIONAL'])],
-                'region_id'       => 'sometimes|exists:regions,id',
-                'provincia_id'    => 'sometimes|exists:provincias,id',
-                'comuna_id'       => 'sometimes|exists:comunas,id',
-                'institucion_id'  => 'sometimes|exists:instituciones_ejecutoras,id',
-                'password'        => 'nullable|string|min:8',
+                'nombres'          => 'sometimes|string|max:255',
+                'apellidos'        => 'sometimes|string|max:255',
+                'rut'              => ['sometimes','string', Rule::unique('usuarios_institucion')->ignore($user->id)],
+                'sexo'             => ['sometimes', Rule::in(['M','F'])],
+                'fecha_nacimiento' => 'sometimes|date',
+                'profesion'        => 'nullable|string',
+                'email'            => ['sometimes','email', Rule::unique('usuarios_institucion')->ignore($user->id)],
+                'rol'              => ['sometimes', Rule::in(['SEREMI','COORDINADOR','PROFESIONAL'])],
+                'region_id'        => 'sometimes|exists:regions,id',
+                'provincia_id'     => 'sometimes|exists:provincias,id',
+                'comuna_id'        => 'sometimes|exists:comunas,id',
+                'institucion_id'   => 'sometimes|exists:instituciones_ejecutoras,id',
+                'password'         => 'nullable|string|min:8',
             ]);
-            if(isset($validated['password'])) $validated['password'] = Hash::make($validated['password']);
+
+            // 🔒 Si se envió una contraseña NO vacía, se hashea y se incluye
+            if (array_key_exists('password', $validated)) {
+                if (!empty($validated['password'])) {
+                    $validated['password'] = Hash::make($validated['password']);
+                } else {
+                    unset($validated['password']); // ❌ No actualizar password si vino vacío
+                }
+            }
+
             $user->update($validated);
+
             return response()->json($user, Response::HTTP_OK);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['message' => 'Usuario no encontrado'], Response::HTTP_NOT_FOUND);
@@ -98,6 +109,7 @@ class UsuariosInstitucionController extends Controller
             return response()->json(['message' => 'Error al actualizar usuario'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
 
     public function destroy($id)
     {
