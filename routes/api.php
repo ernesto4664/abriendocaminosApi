@@ -140,6 +140,10 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::post('/registro-cuidador', [RegistroCuidadorController::class, 'store']);
     Route::get('/registro-cuidador/documento-cuidador', [DocumentosFormulariosController::class, 'downloadCuidadorDocumento']);
 
+    Route::get('registro-nna/por-region/{region}', [RegistroNnasController::class, 'profesionalesPorRegion']);
+
+
+
 });
 
 

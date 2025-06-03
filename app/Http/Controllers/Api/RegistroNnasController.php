@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\RegistroNnas;
+use App\Models\UsuariosInstitucion;
+
 
 
 class RegistroNnasController extends Controller
@@ -99,7 +101,17 @@ public function getNna()
 
     return response()->json(['data' => $nna], 200);
 }
+public function profesionalesPorRegion($regionId)
+{
+    try {
+        $profesionales = UsuariosInstitucion::where('region_id', $regionId)->get();
 
+        return response()->json($profesionales);
+    } catch (\Exception $e) {
+        \Log::error('Error al obtener profesionales por región: ' . $e->getMessage());
+        return response()->json(['error' => 'Error interno del servidor'], 500);
+    }
+}
 
 
 }
