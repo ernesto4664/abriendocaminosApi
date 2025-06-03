@@ -15,7 +15,13 @@ class UsuariosInstitucionController extends Controller
     public function index()
     {
         try {
-            $usuarios = UsuariosInstitucion::with(['region','provincia','comuna','institucion'])->get();
+            $usuarios = UsuariosInstitucion::with([
+                'region',
+                'provincia',
+                'comuna',
+                'institucion.territorio' // 💥 Esto incluye automáticamente los datos del territorio
+            ])->get();
+
             return response()->json($usuarios, Response::HTTP_OK);
         } catch (\Throwable $e) {
             Log::error('[UsuariosInstitucion][index] ' . $e->getMessage());
