@@ -11,6 +11,7 @@ use App\Models\Comuna;
 use App\Models\LineasDeIntervencion;
 use App\Models\PlanIntervencion;
 use Illuminate\Support\Facades\Log;
+
 use Symfony\Component\HttpFoundation\Response;
 
 class TerritorioController extends Controller
@@ -153,37 +154,49 @@ class TerritorioController extends Controller
         }
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'nombre_territorio' => 'required|string|max:255',
-            'cod_territorio'    => 'required|integer',
-            'comuna_id'         => 'required|array',
-            'provincia_id'      => 'required|array',
-            'region_id'         => 'required|array',
-            'plazas'            => 'nullable|integer',
-            'linea_id'          => 'required|integer|exists:lineasdeintervenciones,id',
-            'cuota_1'           => 'nullable|numeric',
-            'cuota_2'           => 'nullable|numeric',
-        ]);
 
-        try {
-            $t = Territorio::create(array_merge(
-                $request->only([
-                    'nombre_territorio','cod_territorio',
-                    'comuna_id','provincia_id','region_id',
-                    'plazas','linea_id','cuota_1','cuota_2'
-                ]),
-                ['total' => ($request->cuota_1 ?? 0) + ($request->cuota_2 ?? 0)]
-            ));
 
-            return response()->json($t, Response::HTTP_CREATED);
+public function store(Request $request)
+{
+    $request->validate([
+        'nombre_territorio' => 'required|string|max:255',
+        'cod_territorio'    => 'required|integer',
+        'comuna_id'         => 'required|array',
+        'provincia_id'      => 'required|array',
+        'region_id'         => 'required|array',
+        'plazas'            => 'nullable|integer',
+        'linea_id'          => 'required|integer|exists:lineasdeintervenciones,id',
+        'cuota_1'           => 'nullable|numeric',
+        'cuota_2'           => 'nullable|numeric',
+    ]);
 
-        } catch (\Throwable $e) {
-            Log::error('[Territorio][store] ' . $e->getMessage());
-            return response()->json(['message' => 'Error al crear territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+    try {
+        $datos = array_merge(
+            $request->only([
+                'nombre_territorio','cod_territorio',
+                'comuna_id','provincia_id','region_id',
+                'plazas','linea_id','cuota_1','cuota_2'
+            ]),
+            [
+                'total' => ($request->cuota_1 ?? 0) + ($request->cuota_2 ?? 0),
+                'plazas_disponibles' => $request->plazas ?? 0
+            ]
+        );
+
+        Log::info('[Territorio][store] Datos a registrar:', $datos);
+
+        $t = Territorio::create($datos);
+
+        Log::info('[Territorio][store] Registro creado correctamente', ['id' => $t->id]);
+
+        return response()->json($t, Response::HTTP_CREATED);
+
+    } catch (\Throwable $e) {
+        Log::error('[Territorio][store] Error al crear territorio: ' . $e->getMessage());
+        return response()->json(['message' => 'Error al crear territorio'], Response::HTTP_INTERNAL_SERVER_ERROR);
     }
+}
+
 
     public function update(Request $request, $id)
     {

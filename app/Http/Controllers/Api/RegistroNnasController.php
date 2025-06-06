@@ -8,6 +8,7 @@ use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\RegistroNnas;
 use App\Models\UsuariosInstitucion;
+use App\Models\Territorio;
 
 
 
@@ -37,6 +38,7 @@ public function store(Request $request)
         'parentesco_cp' => 'required|string|max:50',
         'nacionalidad' => 'required|string|max:50',
         'participa_programa' => 'required|boolean',
+        'territorio_id' => 'required|exists:territorios,id', // ✅ Nueva validación
     ];
 
     // Validaciones condicionales
@@ -51,6 +53,16 @@ public function store(Request $request)
     $validated = $request->validate($rules);
 
     Log::info('Datos validados correctamente', ['validated' => $validated]);
+
+    // 🛑 Verificar plazas disponibles en el territorio
+    $territorio = Territorio::find($validated['territorio_id']);
+
+    if (!$territorio || $territorio->plazas_disponibles <= 0) {
+        Log::warning('No hay plazas disponibles para el territorio.', ['territorio_id' => $validated['territorio_id']]);
+        return response()->json([
+            'message' => 'No hay plazas disponibles en el territorio seleccionado.'
+        ], Response::HTTP_BAD_REQUEST);
+    }
 
     // Guardar el archivo si existe
     $pathDocumento = null;
@@ -79,15 +91,26 @@ public function store(Request $request)
         'participa_programa' => $validated['participa_programa'],
         'motivo_no_participa' => $validated['motivo_no_participa'] ?? null,
         'documento_firmado' => $pathDocumento,
+        // ✅ Opcionalmente puedes guardar el territorio_id si tienes ese campo en la tabla
+        'territorio_id' => $validated['territorio_id'],
     ]);
 
     Log::info('Registro NNA creado correctamente', ['registro' => $registro]);
+
+    // ✅ Descontar una plaza disponible
+    $territorio->plazas_disponibles -= 1;
+    $territorio->save();
+    Log::info('Plaza descontada', [
+        'territorio_id' => $territorio->id,
+        'plazas_disponibles_actual' => $territorio->plazas_disponibles
+    ]);
 
     return response()->json([
         'message' => 'Registro de NNA creado correctamente',
         'data' => $registro
     ], 201);
 }
+
 public function getNna()
 {
     $nna = RegistroNnas::select('id', 'nombres', 'apellidos')->get();
