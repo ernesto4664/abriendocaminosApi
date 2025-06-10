@@ -535,4 +535,7 @@ class RespuestaController extends Controller
             Log::error("[Ponderaciones][actualizarTipoYLimpiar] Error al actualizar: " . $e->getMessage());
         }
     }
+
+
+    
 }

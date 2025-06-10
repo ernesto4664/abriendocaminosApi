@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\DocumentosFormulariosController;
 use App\Http\Controllers\Api\RegistroNnasController;
 use App\Http\Controllers\Api\RegistroasplController;
 use App\Http\Controllers\Api\RegistroCuidadorController;
+use App\Http\Controllers\Api\EjecucionInstrumentoController;
+use App\Http\Controllers\Api\GuardarRespuestasParcialesController;
 
 Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function () {
     // Rutas para obtener regiones, provincias y comunas de manera dinámica
@@ -143,8 +145,19 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('registro-nna/por-region/{region}', [RegistroNnasController::class, 'profesionalesPorRegion']);
 
 
+   
+
 
 });
+
+
+ //Ejecucion de Instrumento
+    Route::get('nna-con-cuidadores', [EjecucionInstrumentoController::class, 'nnaConCuidadores']);
+    Route::get('nna/{id}', [EjecucionInstrumentoController::class, 'detalleNna']);
+    Route::get('evaluacion/{id}', [EjecucionInstrumentoController::class, 'detalleEvaluacion']);
+    Route::get('evaluaciones', [EjecucionInstrumentoController::class, 'evaluacionesActuales']);
+
+    Route::post('/evaluaciones/respuestas-parciales', [GuardarRespuestasParcialesController::class, 'guardarRespuestasParciales']);
 
 
 
