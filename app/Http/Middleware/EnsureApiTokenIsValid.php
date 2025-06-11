@@ -12,10 +12,18 @@ class EnsureApiTokenIsValid
 {
     public function handle(Request $request, Closure $next)
     {
+       
         // Intentar obtener el token del header o de la cookie
         $apiToken = $request->header('Api-Token') ?? $request->cookie('auth_token');
     
-        if (!$apiToken || $apiToken !== env('API_SERVER_HEADER_TOKENS')) {
+        if (!$apiToken || $apiToken !== 'BASEAPISYSTEMDocker') {
+            // Si el token no está presente o es inválido, registrar el intento de acceso no autorizado
+            Log::warning('Acceso no autorizado... Token de API ausente o no válido.', [
+                'Api-Token Enviado' => $apiToken
+            ]);
+    
+            // Devolver una respuesta JSON con un mensaje de error
+            // Descomentar la siguiente línea si se desea registrar el intento de acceso no autorizado
            /* Log::warning('Acceso no autorizado... Token de API ausente o no válido.', [
                 'Api-Token Enviado' => $apiToken
             ]);*/
