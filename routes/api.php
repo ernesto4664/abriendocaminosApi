@@ -144,6 +144,10 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
 
     Route::get('registro-nna/por-region/{region}', [RegistroNnasController::class, 'profesionalesPorRegion']);
 
+    Route::get('registro-nna/profesionales/institucion/{id}', [RegistroNnasController::class, 'porInstitucion']);
+
+
+
 
    
 

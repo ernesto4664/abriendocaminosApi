@@ -135,6 +135,14 @@ public function profesionalesPorRegion($regionId)
         return response()->json(['error' => 'Error interno del servidor'], 500);
     }
 }
+public function porInstitucion($id)
+{
+    $profesionales = UsuariosInstitucion::where('institucion_id', $id)->get();
+
+    return response()->json($profesionales);
+}
+
+
 
 
 }
