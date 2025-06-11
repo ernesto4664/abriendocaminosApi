@@ -70,4 +70,34 @@ class UsuariosInstitucion extends Authenticatable
     {
         return $this->belongsTo(InstitucionEjecutora::class, 'institucion_id');
     }
+
+        public function provincias()
+    {
+        return $this->belongsToMany(
+            Provincia::class,
+            'usuario_provincia',
+            'usuario_id',
+            'provincia_id'
+        );
+    }
+
+    public function comunas()
+    {
+        return $this->belongsToMany(
+            Comuna::class,
+            'usuario_comuna',
+            'usuario_id',
+            'comuna_id'
+        );
+    }
+
+    public function institucionesPivot()
+    {
+        return $this->belongsToMany(
+            InstitucionEjecutora::class,
+            'usuario_institucion_pivot',
+            'usuario_id',
+            'institucion_id'
+        );
+    }
 }
