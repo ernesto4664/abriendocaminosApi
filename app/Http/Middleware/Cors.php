@@ -13,7 +13,7 @@ class Cors
     {
        // Log::info('Middleware CORS ejecutándose', ['origin' => $request->header('Origin')]);
 
-       $allowedOrigins = ['http://localhost:4200', 'http://3.145.34.241'];
+       $allowedOrigins = ['http://localhost:4200', 'http://3.145.34.241', 'https://abriendocaminos.mideplan.cl/'];
 
        $origin = $request->header('Origin');
        
