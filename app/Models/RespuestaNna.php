@@ -9,15 +9,15 @@ class RespuestaNna extends Model
 {
     protected $table = 'respuestas_nna';
 
-    protected $fillable = [
-        'nna_id',
-        'evaluacion_id',
-        'pregunta_id',
-        'subpregunta_id',
-        'tipo',
-        'respuesta_opcion_id',
-        'respuesta_texto',
-    ];
+   protected $fillable = [
+    'nna_id',
+    'evaluacion_id',
+    'pregunta_id',
+    'subpregunta_id',
+    'tipo',
+    'respuesta',
+];
+
 
     /**
      * Relación con el modelo RegistroNna

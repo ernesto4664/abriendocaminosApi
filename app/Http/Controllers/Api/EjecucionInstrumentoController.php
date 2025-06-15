@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\RegistroCuidador;
 use App\Models\RegistroNnas;
 use Illuminate\Support\Facades\DB;
+use App\Models\RespuestaNna; // Asegúrate de incluir el modelo RespuestaNna
+use Illuminate\Support\Facades\Log;
 
 class EjecucionInstrumentoController extends Controller
 {
@@ -204,4 +206,71 @@ class EjecucionInstrumentoController extends Controller
 
         return response()->json($evaluaciones);
     }
+
+   public function guardarRespuestas(Request $request)
+{
+    $data = $request->validate([
+        'nna_id'         => 'required|integer',
+        'evaluacion_id'  => 'required|integer',
+        'respuestas'     => 'required|array',
+        'respuestas.*.pregunta_id'    => 'required|integer',
+        'respuestas.*.tipo'           => 'required|string',
+        'respuestas.*.respuesta'      => 'nullable|string', // solo un campo!
+        'respuestas.*.subpregunta_id' => 'nullable|integer',
+    ]);
+
+    foreach ($data['respuestas'] as $respuesta) {
+        $subpreguntaId = $respuesta['subpregunta_id'] ?? null;
+        if ($subpreguntaId === 'null' || $subpreguntaId === '') {
+            $subpreguntaId = null;
+        }
+
+        \App\Models\RespuestaNna::updateOrCreate(
+            [
+                'nna_id'         => $data['nna_id'],
+                'evaluacion_id'  => $data['evaluacion_id'],
+                'pregunta_id'    => $respuesta['pregunta_id'],
+                'subpregunta_id' => $subpreguntaId
+            ],
+            [
+                'tipo'      => $respuesta['tipo'],
+                'respuesta' => $respuesta['respuesta'] ?? null,
+            ]
+        );
+    }
+
+    return response()->json(['message' => 'Respuestas guardadas correctamente']);
+}
+
+
+
+public function estadoEvaluacionNna(Request $request)
+{
+    $data = $request->validate([
+        'nna_id' => 'required|exists:registro_nnas,id',
+        'evaluacion_id' => 'required|exists:evaluaciones,id'
+    ]);
+
+    $totalPreguntas = DB::table('preguntas')
+        ->where('evaluacion_id', $data['evaluacion_id'])
+        ->count();
+
+    $respuestasNna = DB::table('respuestas_nna')
+        ->where('nna_id', $data['nna_id'])
+        ->where('evaluacion_id', $data['evaluacion_id'])
+        ->count();
+
+    $porcentaje = $totalPreguntas > 0 ? round(($respuestasNna / $totalPreguntas) * 100, 2) : 0;
+
+    return response()->json([
+        'nna_id' => $data['nna_id'],
+        'evaluacion_id' => $data['evaluacion_id'],
+        'total_preguntas' => $totalPreguntas,
+        'preguntas_respondidas' => $respuestasNna,
+        'porcentaje' => $porcentaje,
+        'en_proceso' => $respuestasNna > 0 && $respuestasNna < $totalPreguntas,
+        'finalizado' => $respuestasNna === $totalPreguntas,
+    ]);
+}
+
 }

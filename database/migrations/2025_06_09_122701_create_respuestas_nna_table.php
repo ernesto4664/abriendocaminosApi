@@ -24,6 +24,9 @@ class CreateRespuestasNnaTable extends Migration
     $table->foreign('pregunta_id')->references('id')->on('preguntas')->onDelete('cascade');
     $table->foreign('subpregunta_id')->references('id')->on('respuestas_subpreguntas')->onDelete('set null');
     $table->foreign('respuesta_opcion_id')->references('id')->on('respuestas_opciones')->onDelete('set null');
+    // En la migración de la tabla respuesta_nnas:
+$table->unique(['nna_id', 'evaluacion_id', 'pregunta_id', 'subpregunta_id'], 'unico_respuesta');
+
 });
     }
 

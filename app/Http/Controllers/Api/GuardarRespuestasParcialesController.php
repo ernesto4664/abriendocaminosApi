@@ -9,40 +9,40 @@ use Illuminate\Support\Facades\Log;
 
 class GuardarRespuestasParcialesController
 {
-    public function guardarRespuestasParciales(Request $request)
-    {
+  
 
-        Log::info('Datos recibidos en guardarRespuestasParciales:', $request->all());
+     public function guardarRespuestasParciales(Request $request)
+{
+    $data = $request->validate([
+        'nna_id'         => 'required|integer',
+        'evaluacion_id'  => 'required|integer',
+        'respuestas'     => 'required|array',
+        'respuestas.*.pregunta_id'    => 'required|integer',
+        'respuestas.*.tipo'           => 'required|string',
+        'respuestas.*.respuesta'      => 'nullable|string', // solo un campo!
+        'respuestas.*.subpregunta_id' => 'nullable|integer',
+    ]);
 
-                $data = $request->validate([
-            'nna_id'         => 'required|exists:registro_nnas,id',
-            'evaluacion_id'  => 'required|exists:evaluaciones,id',
-            'respuestas'     => 'required|array',
-            'respuestas.*.pregunta_id' => 'required|exists:preguntas,id',
-            'respuestas.*.respuesta_opcion_id' => 'nullable|integer|min:1|exists:respuestas_opciones,id',
-
-            'respuestas.*.tipo' => 'required|string',
-            'respuestas.*.respuesta_texto' => 'nullable|string',
-            'respuestas.*.subpregunta_id' => 'nullable|exists:subpreguntas,id'
-        ]);
-        Log::info('Datos validados:', $data);
-
-        foreach ($data['respuestas'] as $respuesta) {
-            RespuestaNna::updateOrCreate(
-                [
-                    'nna_id'        => $data['nna_id'],
-                    'evaluacion_id' => $data['evaluacion_id'],
-                    'pregunta_id'   => $respuesta['pregunta_id'],
-                    'subpregunta_id'=> $respuesta['subpregunta_id'] ?? null
-                ],
-                [
-                    'tipo'               => $respuesta['tipo'],
-                    'respuesta_opcion_id'=> $respuesta['respuesta_opcion_id'] ?? null,
-                    'respuesta_texto'    => $respuesta['respuesta_texto'] ?? null
-                ]
-            );
+    foreach ($data['respuestas'] as $respuesta) {
+        $subpreguntaId = $respuesta['subpregunta_id'] ?? null;
+        if ($subpreguntaId === 'null' || $subpreguntaId === '') {
+            $subpreguntaId = null;
         }
 
-        return response()->json(['message' => 'Respuestas guardadas parcialmente'], 200);
+        \App\Models\RespuestaNna::updateOrCreate(
+            [
+                'nna_id'         => $data['nna_id'],
+                'evaluacion_id'  => $data['evaluacion_id'],
+                'pregunta_id'    => $respuesta['pregunta_id'],
+                'subpregunta_id' => $subpreguntaId
+            ],
+            [
+                'tipo'      => $respuesta['tipo'],
+                'respuesta' => $respuesta['respuesta'] ?? null,
+            ]
+        );
     }
+
+    return response()->json(['message' => 'Respuestas guardadas correctamente']);
+}
 }
