@@ -162,7 +162,9 @@ Route::prefix('v1')->middleware([EnsureApiTokenIsValid::class])->group(function 
     Route::get('evaluaciones', [EjecucionInstrumentoController::class, 'evaluacionesActuales']);
 
     Route::post('/evaluaciones/respuestas-parciales', [GuardarRespuestasParcialesController::class, 'guardarRespuestasParciales']);
-    Route::get('/evaluaciones/estado', [EjecucionInstrumentoController::class, 'estadoEvaluacionNna']);
+   Route::get('/evaluaciones/estado-nna/{nna_id}', [EjecucionInstrumentoController::class, 'estadoEvaluacionesPorNna']);
+Route::get('/evaluaciones/{nnaId}/{evaluacionId}/respuestas', [EjecucionInstrumentoController::class, 'respuestasPorNnaYEvaluacion']);
+
 
 
 

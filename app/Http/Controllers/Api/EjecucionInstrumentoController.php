@@ -244,33 +244,66 @@ class EjecucionInstrumentoController extends Controller
 
 
 
-public function estadoEvaluacionNna(Request $request)
+public function estadoEvaluacionesPorNna($nna_id)
 {
-    $data = $request->validate([
-        'nna_id' => 'required|exists:registro_nnas,id',
-        'evaluacion_id' => 'required|exists:evaluaciones,id'
-    ]);
+    // Verifica que el NNA exista
+    $nnaExiste = DB::table('registro_nnas')->where('id', $nna_id)->exists();
+    if (!$nnaExiste) {
+        return response()->json(['message' => 'NNA no encontrado'], 404);
+    }
 
-    $totalPreguntas = DB::table('preguntas')
-        ->where('evaluacion_id', $data['evaluacion_id'])
-        ->count();
+    $evaluaciones = DB::table('evaluaciones')->get();
 
-    $respuestasNna = DB::table('respuestas_nna')
-        ->where('nna_id', $data['nna_id'])
-        ->where('evaluacion_id', $data['evaluacion_id'])
-        ->count();
+    $resultado = [];
 
-    $porcentaje = $totalPreguntas > 0 ? round(($respuestasNna / $totalPreguntas) * 100, 2) : 0;
+    foreach ($evaluaciones as $eval) {
+        $totalPreguntas = DB::table('preguntas')
+            ->where('evaluacion_id', $eval->id)
+            ->count();
+
+        $respuestas = DB::table('respuestas_nna')
+            ->where('nna_id', $nna_id)
+            ->where('evaluacion_id', $eval->id)
+            ->count();
+
+        $estado = 'no_iniciada';
+        $porcentaje = 0;
+
+        if ($respuestas > 0 && $respuestas < $totalPreguntas) {
+            $estado = 'en_proceso';
+            $porcentaje = round(($respuestas / $totalPreguntas) * 100, 2);
+        } elseif ($respuestas === $totalPreguntas && $totalPreguntas > 0) {
+            $estado = 'completada';
+            $porcentaje = 100;
+        }
+
+        $resultado[] = [
+            'evaluacion_id' => $eval->id,
+            'nombre' => $eval->nombre ?? null,
+            'estado' => $estado,
+            'total_preguntas' => $totalPreguntas,
+            'respuestas' => $respuestas,
+            'porcentaje' => $porcentaje
+        ];
+    }
 
     return response()->json([
-        'nna_id' => $data['nna_id'],
-        'evaluacion_id' => $data['evaluacion_id'],
-        'total_preguntas' => $totalPreguntas,
-        'preguntas_respondidas' => $respuestasNna,
-        'porcentaje' => $porcentaje,
-        'en_proceso' => $respuestasNna > 0 && $respuestasNna < $totalPreguntas,
-        'finalizado' => $respuestasNna === $totalPreguntas,
+        'nna_id' => $nna_id,
+        'evaluaciones' => $resultado
     ]);
 }
+
+public function respuestasPorNnaYEvaluacion($nnaId, $evaluacionId)
+{
+    $respuestas = DB::table('respuestas_nna')
+        ->where('nna_id', $nnaId)
+        ->where('evaluacion_id', $evaluacionId)
+        ->select('pregunta_id', 'respuesta', 'subpregunta_id', 'tipo')
+        ->get();
+
+    return response()->json($respuestas);
+}
+
+
 
 }
